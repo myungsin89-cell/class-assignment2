@@ -13,11 +13,20 @@ if (process.env.NODE_ENV !== 'production') globalForDb.db = db;
 // Initialize database schema
 try {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS schools (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      password TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS classes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      school_id INTEGER NOT NULL,
       grade INTEGER NOT NULL,
       section_count INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS students (
