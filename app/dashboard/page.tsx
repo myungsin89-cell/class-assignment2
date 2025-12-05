@@ -8,6 +8,9 @@ interface ClassData {
   grade: number;
   section_count: number;
   created_at: string;
+  has_child_classes?: boolean;
+  is_distributed?: number;
+  parent_class_id?: number;
 }
 
 export default function Dashboard() {
@@ -79,13 +82,12 @@ export default function Dashboard() {
         if (!response.ok) throw new Error('Failed to create class');
 
         const data = await response.json();
+        const newClass = { ...data, created_at: new Date().toISOString() };
+        setClasses(prevClasses => [...prevClasses, newClass]);
         setShowModal(false);
         setGrade('');
         setSectionCount('');
 
-        fetchClasses();
-
-        router.push(`/students?classId=${data.id}`);
       } catch (error) {
         console.error('Error:', error);
         alert('반 생성 중 오류가 발생했습니다.');
@@ -98,10 +100,14 @@ export default function Dashboard() {
       router.push(`/students?classId=${classId}`);
     };
 
-    const handleDeleteClass = async (classId: number, e: React.MouseEvent) => {
+    const handleDeleteClass = async (classId: number, e: React.MouseEvent, hasChildClasses?: boolean) => {
       e.stopPropagation(); // Prevent card click
 
-      if (!confirm('이 학급을 삭제하시겠습니까? 모든 학생 데이터도 함께 삭제됩니다.')) {
+      const confirmMessage = hasChildClasses
+        ? '이 학급과 반편성된 새로운반을 모두 삭제하시겠습니까?\n\n삭제 대상:\n- 기존반과 모든 학생 데이터\n- 반편성된 새로운반과 모든 학생 데이터\n\n이 작업은 되돌릴 수 없습니다.'
+        : '이 학급을 삭제하시겠습니까?\n모든 학생 데이터도 함께 삭제됩니다.';
+
+      if (!confirm(confirmMessage)) {
         return;
       }
 
@@ -111,13 +117,17 @@ export default function Dashboard() {
           method: 'DELETE',
         });
 
-        if (!response.ok) throw new Error('Failed to delete class');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to delete class');
+        }
 
-        alert('학급이 삭제되었습니다.');
+        const result = await response.json();
+        alert(result.message || '학급이 삭제되었습니다.');
         fetchClasses(); // Refresh the list
       } catch (error) {
         console.error('Error deleting class:', error);
-        alert('학급 삭제 중 오류가 발생했습니다.');
+        alert(error instanceof Error ? error.message : '학급 삭제 중 오류가 발생했습니다.');
       }
     };
 
@@ -186,12 +196,12 @@ export default function Dashboard() {
               }}
             >
               <button
-                onClick={(e) => handleDeleteClass(classData.id, e)}
+                onClick={(e) => handleDeleteClass(classData.id, e, classData.has_child_classes)}
                 style={{
                   position: 'absolute',
                   top: '10px',
                   right: '10px',
-                  background: '#dc3545',
+                  background: classData.has_child_classes ? '#ff6b6b' : '#dc3545',
                   color: 'white',
                   border: 'none',
                   borderRadius: '50%',
@@ -206,18 +216,46 @@ export default function Dashboard() {
                   zIndex: 10
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#c82333';
+                  e.currentTarget.style.background = classData.has_child_classes ? '#ff5252' : '#c82333';
                   e.currentTarget.style.transform = 'scale(1.1)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#dc3545';
+                  e.currentTarget.style.background = classData.has_child_classes ? '#ff6b6b' : '#dc3545';
                   e.currentTarget.style.transform = 'scale(1)';
                 }}
-                title="학급 삭제"
+                title={classData.has_child_classes ? '학급과 반편성된 새로운반을 모두 삭제합니다' : '학급 삭제'}
               >
                 ×
               </button>
               <div style={{ textAlign: 'center' }}>
+                {classData.has_child_classes && (
+                  <div style={{
+                    display: 'inline-block',
+                    background: '#ffc107',
+                    color: '#000',
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '12px',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    marginBottom: '0.5rem'
+                  }}>
+                    🔒 기존반 (보호됨)
+                  </div>
+                )}
+                {classData.is_distributed === 1 && (
+                  <div style={{
+                    display: 'inline-block',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '12px',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    marginBottom: '0.5rem'
+                  }}>
+                    ✨ 새로운반
+                  </div>
+                )}
                 <h2 style={{ fontSize: '2rem', marginBottom: '0.5rem', color: '#007bff' }}>
                   {classData.grade}학년
                 </h2>

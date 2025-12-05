@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
         );
 
         const insertStmt = db.prepare(
-            'INSERT INTO students (class_id, section_number, name, gender, is_problem_student, group_name) VALUES (?, ?, ?, ?, ?, ?)'
+            'INSERT INTO students (class_id, section_number, name, gender, is_problem_student, is_special_class, group_name, rank) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         const saveStudents = db.transaction((studentList: any[]) => {
@@ -50,7 +50,9 @@ export async function POST(request: NextRequest) {
                     student.name,
                     student.gender,
                     student.is_problem_student ? 1 : 0,
-                    student.group_name || null
+                    student.is_special_class ? 1 : 0,
+                    student.group_name || null,
+                    student.rank || null
                 );
             }
         });

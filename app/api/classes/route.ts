@@ -29,9 +29,19 @@ export async function GET(request: NextRequest) {
         }
 
         const stmt = db.prepare('SELECT * FROM classes WHERE school_id = ? ORDER BY created_at DESC');
-        const classes = stmt.all(schoolId);
+        const classes = stmt.all(schoolId) as any[];
 
-        return NextResponse.json(classes);
+        // 각 클래스에 대해 child class가 있는지 확인
+        const childStmt = db.prepare('SELECT COUNT(*) as count FROM classes WHERE parent_class_id = ?');
+        const classesWithChildInfo = classes.map(classData => {
+            const childResult = childStmt.get(classData.id) as { count: number };
+            return {
+                ...classData,
+                has_child_classes: childResult.count > 0
+            };
+        });
+
+        return NextResponse.json(classesWithChildInfo);
     } catch (error) {
         console.error('Error fetching classes:', error);
         return NextResponse.json({ error: 'Failed to fetch classes' }, { status: 500 });
@@ -56,11 +66,29 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: 'Class not found or unauthorized' }, { status: 404 });
         }
 
+        // Check if this class has child classes (반편성된 클래스)
+        const childStmt = db.prepare('SELECT id FROM classes WHERE parent_class_id = ?');
+        const childClasses = childStmt.all(classId) as { id: number }[];
+
+        // Delete all child classes first (if any)
+        if (childClasses.length > 0) {
+            const deleteChildStmt = db.prepare('DELETE FROM classes WHERE parent_class_id = ?');
+            deleteChildStmt.run(classId);
+        }
+
         // Delete the class (students will be deleted automatically due to CASCADE)
         const deleteStmt = db.prepare('DELETE FROM classes WHERE id = ?');
         deleteStmt.run(classId);
 
-        return NextResponse.json({ success: true, message: 'Class deleted successfully' });
+        const message = childClasses.length > 0
+            ? `학급과 반편성된 ${childClasses.length}개의 새로운반이 모두 삭제되었습니다.`
+            : 'Class deleted successfully';
+
+        return NextResponse.json({
+            success: true,
+            message,
+            deletedChildClasses: childClasses.length
+        });
     } catch (error: any) {
         console.error('Error deleting class:', error);
         return NextResponse.json({ error: 'Failed to delete class', details: error.message }, { status: 500 });
