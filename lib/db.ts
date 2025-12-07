@@ -80,6 +80,20 @@ try {
   } catch (e) {
     // 컬럼이 이미 존재하면 에러 무시
   }
+
+  // 기존 테이블에 school_id 컬럼 추가 (학교 ID)
+  try {
+    db.exec(`ALTER TABLE classes ADD COLUMN school_id INTEGER DEFAULT 1;`);
+  } catch (e) {
+    // 컬럼이 이미 존재하면 에러 무시
+  }
+
+  // 기존 테이블에 section_statuses 컬럼 추가 (각 반의 완료 상태)
+  try {
+    db.exec(`ALTER TABLE classes ADD COLUMN section_statuses TEXT DEFAULT '{}';`);
+  } catch (e) {
+    // 컬럼이 이미 존재하면 에러 무시
+  }
 } catch (error) {
   console.error('Database initialization failed:', error);
 }

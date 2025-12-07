@@ -2,13 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import RankModal from './RankModal';
+import SeparationModal from './SeparationModal';
 
 interface Student {
     id?: number;
     name: string;
     gender: 'M' | 'F';
+    birth_date?: string;
+    contact?: string;
+    notes?: string;
     is_problem_student: boolean;
     is_special_class: boolean;
+    is_underachiever: boolean;
     group_name: string;
     rank: number | null;
     previous_section?: number | null;
@@ -18,6 +24,7 @@ interface ClassData {
     id: number;
     grade: number;
     section_count: number;
+    section_statuses?: string;
     is_distributed?: number;
     parent_class_id?: number;
     child_class_id?: number;
@@ -37,6 +44,12 @@ export default function StudentsPage() {
     const [isPasting, setIsPasting] = useState(false);
     const [showDistributeModal, setShowDistributeModal] = useState(false);
     const [newSectionCount, setNewSectionCount] = useState<number>(2);
+    const [showRankModal, setShowRankModal] = useState(false);
+    const [showSeparationModal, setShowSeparationModal] = useState(false);
+    const [isCompleted, setIsCompleted] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<'complete' | 'unmark'>('complete');
 
     useEffect(() => {
         if (!classId) return;
@@ -48,10 +61,30 @@ export default function StudentsPage() {
         loadStudents();
     }, [classId, currentSection]);
 
+    // 섹션 변경 시 상태 재확인 (classData가 이미 로드된 경우)
+    useEffect(() => {
+        if (classData && currentSection) {
+            try {
+                const statuses = JSON.parse(classData.section_statuses || '{}');
+                setIsCompleted(statuses[currentSection] === 'completed');
+            } catch (e) {
+                setIsCompleted(false);
+            }
+        }
+    }, [currentSection, classData]);
+
     const loadClassData = async () => {
         try {
-            const response = await fetch(`/api/classes/${classId}`);
+            const response = await fetch(`/api/classes/${classId}?t=${Date.now()}`);
             const data = await response.json();
+
+            try {
+                const statuses = JSON.parse(data.section_statuses || '{}');
+                setIsCompleted(statuses[currentSection] === 'completed');
+            } catch (e) {
+                setIsCompleted(false);
+            }
+
             setClassData(data);
 
             // 현재 클래스가 child class인 경우 (반편성된 클래스)
@@ -113,8 +146,12 @@ export default function StudentsPage() {
                     id: s.id,
                     name: s.name,
                     gender: s.gender,
+                    birth_date: s.birth_date || '',
+                    contact: s.contact || '',
+                    notes: s.notes || '',
                     is_problem_student: Boolean(s.is_problem_student),
                     is_special_class: Boolean(s.is_special_class),
+                    is_underachiever: Boolean(s.is_underachiever),
                     group_name: s.group_name || '',
                     rank: s.rank || null,
                     previous_section: s.previous_section || null,
@@ -131,8 +168,12 @@ export default function StudentsPage() {
     const createEmptyStudent = (): Student => ({
         name: '',
         gender: 'M',
-        is_problem_student: false,
-        is_special_class: false,
+        birth_date: '',
+        contact: '',
+        notes: '',
+        is_problem_student: false, // 기본값 false
+        is_special_class: false, // 기본값 false
+        is_underachiever: false, // 기본값 false
         group_name: '',
         rank: null,
         previous_section: null,
@@ -148,36 +189,37 @@ export default function StudentsPage() {
         const newStudents: Student[] = rows.map(row => {
             const cols = row.split('\t');
 
-            // 성별 파싱: F/f/여/여자 → 'F', M/m/남/남자 → 'M'
-            const genderValue = cols[1]?.trim().toUpperCase();
+            // 1. 번호 (무시)
+            // 2. 성명
+            const name = cols[1]?.trim() || '';
+
+            // 3. 성별
+            const genderValue = cols[2]?.trim().toUpperCase();
             let gender: 'M' | 'F' = 'M';
-            if (genderValue === 'F' || cols[1]?.trim() === '여' || cols[1]?.trim() === '여자') {
+            if (genderValue === 'F' || cols[2]?.trim() === '여' || cols[2]?.trim() === '여자') {
                 gender = 'F';
-            } else if (genderValue === 'M' || cols[1]?.trim() === '남' || cols[1]?.trim() === '남자') {
-                gender = 'M';
             }
 
-            // 등수 파싱: 숫자가 아닌 모든 문자 제거
-            const rankValue = cols[5]?.replace(/\D/g, '') || '';
-            const rankNum = parseInt(rankValue, 10);
+            // 4. 생년월일
+            const birth_date = cols[3]?.trim() || '';
 
-            // 그룹 파싱: "1" → "그룹1", "그룹 1" → "그룹1"
-            let groupValue = cols[4]?.trim() || '';
-            if (/^\d+$/.test(groupValue)) {
-                groupValue = `그룹${groupValue}`;
-            } else if (groupValue) {
-                groupValue = groupValue.replace(/\s/g, '');
-            }
-            const validGroups = ['그룹1', '그룹2', '그룹3', '그룹4', '그룹5', '그룹6', '그룹7', '그룹8', '그룹9', '그룹10'];
-            const finalGroup = validGroups.includes(groupValue) ? groupValue : '';
+            // 5. 특이사항
+            const notes = cols[4]?.trim() || '';
+
+            // 6. 연락처
+            const contact = cols[5]?.trim() || '';
 
             return {
-                name: cols[0]?.trim() || '',
-                gender: gender,
-                is_problem_student: cols[2]?.toLowerCase() === 'true' || cols[2] === '1' || cols[2] === '문제',
-                is_special_class: cols[3]?.toLowerCase() === 'true' || cols[3] === '1' || cols[3] === '특수',
-                group_name: finalGroup,
-                rank: !isNaN(rankNum) && rankValue ? rankNum : null,
+                name,
+                gender,
+                birth_date,
+                notes,
+                contact,
+                is_problem_student: false, // 기본값 false
+                is_special_class: false, // 기본값 false
+                is_underachiever: false, // 기본값 false
+                group_name: '',
+                rank: null,
             };
         });
 
@@ -436,6 +478,15 @@ export default function StudentsPage() {
         }
     };
 
+    // 통계 계산
+    const stats = {
+        total: students.filter(s => s.name.trim()).length,
+        male: students.filter(s => s.gender === 'M' && s.name.trim()).length,
+        female: students.filter(s => s.gender === 'F' && s.name.trim()).length,
+        problem: students.filter(s => s.is_problem_student && s.name.trim()).length,
+        special: students.filter(s => s.is_special_class && s.name.trim()).length,
+    };
+
     if (!classId) {
         return (
             <div className="container">
@@ -447,359 +498,549 @@ export default function StudentsPage() {
     }
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh' }}>
-            {/* Sidebar */}
-            <div className="sidebar">
-                <div className="sidebar-header">
-                    <h3>{classData?.grade}학년</h3>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                        {classData?.is_distributed ? '✨ 편성 완료' : '반 목록'}
-                    </p>
+        <div style={{ minHeight: '100vh', paddingBottom: '4rem' }}>
+            <div className="container">
+                {/* 헤더 */}
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '2rem'
+                }}>
+                    <div>
+                        <h1 style={{ margin: '0 0 0.5rem 0' }}>{classData?.grade}학년 {currentSection}반 학생 정보</h1>
+                        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>학생 정보를 입력하고 석차, 분리 그룹을 설정하세요</p>
+                    </div>
+                    <button
+                        onClick={() => router.push(`/classes/${classId}`)}
+                        className="btn btn-secondary"
+                    >
+                        ◀ 반 목록으로
+                    </button>
                 </div>
-                <div className="sidebar-sections">
-                    {/* 기존반 (원본 클래스) */}
-                    {parentClassData && (
-                        <>
-                            <div style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', color: '#999', fontWeight: 'bold' }}>
-                                기존반
-                            </div>
-                            {[...Array(parentClassData.section_count)].map((_, i) => (
-                                <button
-                                    key={`parent-${i}`}
-                                    className={`section-btn ${classId === String(parentClassData.id) && currentSection === i + 1 ? 'active' : ''}`}
-                                    onClick={() => router.push(`/students?classId=${parentClassData.id}&section=${i + 1}`)}
-                                >
-                                    <span className="section-number">{i + 1}</span>
-                                    <span className="section-label">반</span>
-                                </button>
-                            ))}
-                        </>
-                    )}
 
-                    {/* 새로운반 (편성된 클래스) */}
-                    {childClassData && (
-                        <>
-                            <div style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', color: '#667eea', fontWeight: 'bold', marginTop: '1rem' }}>
-                                새로운반
-                            </div>
-                            {[...Array(childClassData.section_count)].map((_, i) => (
-                                <button
-                                    key={`child-${i}`}
-                                    className={`section-btn ${classId === String(childClassData.id) && currentSection === i + 1 ? 'active' : ''}`}
-                                    onClick={() => router.push(`/students?classId=${childClassData.id}&section=${i + 1}`)}
-                                    style={{
-                                        background: currentSection === i + 1 && classId === String(childClassData.id) ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'var(--card-bg)',
-                                        border: '2px solid #667eea'
-                                    }}
-                                >
-                                    <span className="section-number">{i + 1}</span>
-                                    <span className="section-label">반</span>
-                                </button>
-                            ))}
-                        </>
-                    )}
 
-                    {/* 일반 클래스 (반편성 없음) */}
-                    {!parentClassData && !childClassData && classData && (
-                        <>
-                            {[...Array(classData.section_count)].map((_, i) => (
-                                <button
-                                    key={`normal-${i}`}
-                                    className={`section-btn ${currentSection === i + 1 ? 'active' : ''}`}
-                                    onClick={() => navigateToSection(i + 1)}
-                                >
-                                    <span className="section-number">{i + 1}</span>
-                                    <span className="section-label">반</span>
-                                </button>
-                            ))}
-                        </>
-                    )}
-                </div>
-            </div>
 
-            {/* Main Content */}
-            <div className="main-content fade-in">
-                <div className="container">
-                    <div className="card">
-                        <h1>{classData?.grade}학년 {currentSection}반 학생 정보</h1>
-
-                        <div style={{
-                            background: 'var(--card-bg)',
-                            border: '2px dashed var(--primary-color)',
-                            borderRadius: '12px',
-                            padding: '1.5rem',
-                            marginBottom: '2rem'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                                <span style={{ fontSize: '1.5rem' }}>📋</span>
-                                <div style={{ flex: 1 }}>
-                                    <h3 style={{ margin: 0, color: 'var(--primary-color)' }}>엑셀 붙여넣기 가능</h3>
-                                    <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                        엑셀에서 복사 후 아래 표에 <strong>Ctrl+V</strong>로 붙여넣기 하거나, 직접 입력할 수 있습니다.
+                {/* 툴바 */}
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '1rem',
+                    flexWrap: 'wrap',
+                    gap: '1rem'
+                }}>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                            className="btn btn-secondary"
+                            onClick={downloadTemplate}
+                            style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+                            title="엑셀 템플릿 다운로드"
+                        >
+                            📥 예시자료
+                        </button>
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => setIsPasting(!isPasting)}
+                                style={{
+                                    fontSize: '0.9rem',
+                                    padding: '0.5rem 1rem',
+                                    background: isPasting ? 'var(--primary-light)' : undefined,
+                                    color: isPasting ? 'white' : undefined
+                                }}
+                                title="엑셀 데이터 붙여넣기"
+                            >
+                                📋 엑셀 붙여넣기
+                            </button>
+                            {isPasting && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '110%',
+                                    left: 0,
+                                    width: '300px',
+                                    padding: '1rem',
+                                    background: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '8px',
+                                    zIndex: 10,
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                }}>
+                                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                                        엑셀 데이터를 복사(Ctrl+C)한 후<br />테이블을 클릭하고 붙여넣기(Ctrl+V) 하세요.
+                                    </p>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                        * 예시자료 형식을 지켜주세요.
                                     </p>
                                 </div>
-                                <button
-                                    className="btn btn-secondary"
-                                    onClick={downloadTemplate}
-                                    style={{ whiteSpace: 'nowrap' }}
-                                >
-                                    📥 템플릿 다운로드
-                                </button>
-                            </div>
-                            <small style={{ color: 'var(--text-muted)' }}>
-                                <strong>형식:</strong> 이름 | 성별(남/여 또는 M/F) | 문제아(true/false/문제) | 특수반(true/false/특수) | 그룹 | 등수
-                            </small>
+                            )}
                         </div>
+                    </div>
 
-                        {isPasting && (
-                            <div style={{
-                                background: 'var(--success-color)',
-                                color: 'white',
-                                padding: '1rem',
-                                borderRadius: '8px',
-                                marginBottom: '1rem',
-                                textAlign: 'center',
-                                animation: 'fadeIn 0.3s'
-                            }}>
-                                ✅ 데이터가 붙여넣기 되었습니다!
-                            </div>
-                        )}
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                            className="btn"
+                            onClick={() => setShowRankModal(true)}
+                            style={{
+                                background: 'white',
+                                border: '1px solid var(--primary)',
+                                color: 'var(--primary)',
+                                fontSize: '0.9rem',
+                                padding: '0.5rem 1rem'
+                            }}
+                        >
+                            📊 석차 지정
+                        </button>
 
-                        <div className="table-container" onPaste={handlePaste}>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th style={{ width: '30px' }}>#</th>
-                                        {!!classData?.is_distributed && (
-                                            <th style={{ width: '80px' }}>이전반</th>
-                                        )}
-                                        <th>이름</th>
-                                        <th style={{ width: '120px' }}>성별</th>
-                                        <th style={{ width: '120px' }}>문제아</th>
-                                        <th style={{ width: '120px' }}>특수반</th>
-                                        <th style={{ width: '150px' }}>그룹</th>
-                                        <th style={{ width: '100px' }}>등수</th>
-                                        <th style={{ width: '100px' }}>작업</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {students.map((student, index) => (
-                                        <tr key={index}>
-                                            <td>{index + 1}</td>
-                                            {!!classData?.is_distributed && (
-                                                <td style={{
-                                                    textAlign: 'center',
-                                                    fontWeight: 'bold',
-                                                    color: '#999',
-                                                    fontSize: '0.9rem'
-                                                }}>
-                                                    {student.previous_section ? `${student.previous_section}반` : '-'}
-                                                </td>
-                                            )}
-                                            <td>
-                                                <input
-                                                    type="text"
-                                                    className="form-input"
-                                                    value={student.name}
-                                                    onChange={(e) => updateStudent(index, 'name', e.target.value)}
-                                                    onPaste={(e) => handleFieldPaste(e, index, 'name')}
-                                                    placeholder="학생 이름"
-                                                    style={{ margin: 0 }}
-                                                />
-                                            </td>
-                                            <td>
-                                                <select
-                                                    className="form-select"
-                                                    value={student.gender}
-                                                    onChange={(e) => updateStudent(index, 'gender', e.target.value)}
-                                                    onPaste={(e) => handleFieldPaste(e as any, index, 'gender')}
-                                                    style={{ margin: 0 }}
-                                                >
-                                                    <option value="M">남</option>
-                                                    <option value="F">여</option>
-                                                </select>
-                                            </td>
-                                            <td style={{ textAlign: 'center' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={student.is_problem_student}
-                                                    onChange={(e) => updateStudent(index, 'is_problem_student', e.target.checked)}
-                                                />
-                                            </td>
-                                            <td style={{ textAlign: 'center' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={student.is_special_class}
-                                                    onChange={(e) => updateStudent(index, 'is_special_class', e.target.checked)}
-                                                />
-                                            </td>
-                                            <td>
-                                                <select
-                                                    className="form-select"
-                                                    value={student.group_name}
-                                                    onChange={(e) => updateStudent(index, 'group_name', e.target.value)}
-                                                    onPaste={(e) => handleFieldPaste(e as any, index, 'group_name')}
-                                                    style={{ margin: 0 }}
-                                                >
-                                                    <option value="">선택 안함</option>
-                                                    <option value="그룹1">그룹1</option>
-                                                    <option value="그룹2">그룹2</option>
-                                                    <option value="그룹3">그룹3</option>
-                                                    <option value="그룹4">그룹4</option>
-                                                    <option value="그룹5">그룹5</option>
-                                                    <option value="그룹6">그룹6</option>
-                                                    <option value="그룹7">그룹7</option>
-                                                    <option value="그룹8">그룹8</option>
-                                                    <option value="그룹9">그룹9</option>
-                                                    <option value="그룹10">그룹10</option>
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <input
-                                                    type="text"
-                                                    inputMode="numeric"
-                                                    className="form-input"
-                                                    value={student.rank || ''}
-                                                    onChange={(e) => {
-                                                        const cleanValue = e.target.value.replace(/\D/g, '');
-                                                        const numValue = parseInt(cleanValue, 10);
-                                                        updateStudent(index, 'rank', !isNaN(numValue) && cleanValue ? numValue : null);
-                                                    }}
-                                                    onPaste={(e) => handleFieldPaste(e, index, 'rank')}
-                                                    placeholder="등수"
-                                                    style={{ margin: 0 }}
-                                                />
-                                            </td>
-                                            <td>
-                                                <button
-                                                    className="btn btn-danger"
-                                                    onClick={() => removeRow(index)}
-                                                    style={{ padding: '0.5rem', fontSize: '0.85rem' }}
-                                                >
-                                                    삭제
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <button
+                            className="btn"
+                            onClick={() => setShowSeparationModal(true)}
+                            style={{
+                                background: 'white',
+                                border: '1px solid var(--secondary)',
+                                color: 'var(--secondary)',
+                                fontSize: '0.9rem',
+                                padding: '0.5rem 1rem'
+                            }}
+                        >
+                            🔗 반 내부 분리
+                        </button>
+                    </div>
+                </div>
 
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                            <button className="btn btn-secondary" onClick={addRow}>
-                                + 행 추가
-                            </button>
+                {isPasting && (
+                    <div style={{
+                        background: 'var(--success)',
+                        color: 'white',
+                        padding: '1rem',
+                        borderRadius: '8px',
+                        marginBottom: '1rem',
+                        textAlign: 'center',
+                        fontWeight: 'bold',
+                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                        animation: 'fadeIn 0.3s'
+                    }}>
+                        ✅ 데이터가 성공적으로 붙여넣기 되었습니다!
+                    </div>
+                )}
+
+                <div className="table-container" onPaste={handlePaste}>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style={{ width: '50px', textAlign: 'center' }}>#</th>
+                                {!!classData?.is_distributed && (
+                                    <th style={{ width: '60px', textAlign: 'center' }}>이전반</th>
+                                )}
+                                <th style={{ width: '100px' }}>성명</th>
+                                <th style={{ width: '80px', textAlign: 'center' }}>성별</th>
+                                <th style={{ width: '100px' }}>생년월일</th>
+                                <th style={{ width: '150px' }}>특이사항</th>
+                                <th style={{ width: '120px' }}>연락처</th>
+                                <th style={{ width: '60px', textAlign: 'center', borderLeft: '2px solid var(--border)' }}>석차</th>
+                                <th style={{ width: '80px', textAlign: 'center' }}>문제행동</th>
+                                <th style={{ width: '80px', textAlign: 'center' }}>특수교육</th>
+                                <th style={{ width: '80px', textAlign: 'center' }}>부진아</th>
+                                <th style={{ width: '100px' }}>그룹</th>
+                                <th style={{ width: '50px', textAlign: 'center' }}>삭제</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {students.map((student, index) => (
+                                <tr key={index}>
+                                    <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{index + 1}</td>
+                                    {!!classData?.is_distributed && (
+                                        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
+                                            {student.previous_section ? `${student.previous_section}반` : '-'}
+                                        </td>
+                                    )}
+                                    <td>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={student.name}
+                                            onChange={(e) => updateStudent(index, 'name', e.target.value)}
+                                            onPaste={(e) => handleFieldPaste(e, index, 'name')}
+                                            placeholder="이름"
+                                            style={{ margin: 0, padding: '0.25rem', border: 'none', background: 'transparent' }}
+                                            onFocus={(e) => e.target.style.borderBottom = '1px solid var(--primary)'}
+                                            onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
+                                        />
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <div
+                                            className={`badge ${student.gender === 'M' ? 'badge-male' : 'badge-female'}`}
+                                            style={{ cursor: 'pointer', margin: '0 auto', width: 'fit-content' }}
+                                            onClick={() => updateStudent(index, 'gender', student.gender === 'M' ? 'F' : 'M')}
+                                        >
+                                            {student.gender === 'M' ? '남' : '여'}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={student.birth_date || ''}
+                                            onChange={(e) => updateStudent(index, 'birth_date', e.target.value)}
+                                            placeholder="YYMMDD"
+                                            style={{ margin: 0, padding: '0.25rem', border: 'none', background: 'transparent', fontSize: '0.9rem' }}
+                                        />
+                                    </td>
+                                    <td>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={student.notes || ''}
+                                            onChange={(e) => updateStudent(index, 'notes', e.target.value)}
+                                            placeholder="-"
+                                            style={{ margin: 0, padding: '0.25rem', border: 'none', background: 'transparent', fontSize: '0.9rem' }}
+                                        />
+                                    </td>
+                                    <td>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={student.contact || ''}
+                                            onChange={(e) => updateStudent(index, 'contact', e.target.value)}
+                                            placeholder="-"
+                                            style={{ margin: 0, padding: '0.25rem', border: 'none', background: 'transparent', fontSize: '0.9rem' }}
+                                        />
+                                    </td>
+
+                                    {/* 구분선 이후 관리 항목 */}
+                                    <td style={{ borderLeft: '2px solid var(--border)' }}>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            className="form-input"
+                                            value={student.rank || ''}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                                                updateStudent(index, 'rank', isNaN(val) ? null : val);
+                                            }}
+                                            placeholder="-"
+                                            style={{ margin: 0, textAlign: 'center', background: 'transparent', border: 'none' }}
+                                        />
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={student.is_problem_student}
+                                            onChange={(e) => updateStudent(index, 'is_problem_student', e.target.checked)}
+                                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                        />
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={student.is_special_class}
+                                            onChange={(e) => updateStudent(index, 'is_special_class', e.target.checked)}
+                                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                        />
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={student.is_underachiever}
+                                            onChange={(e) => updateStudent(index, 'is_underachiever', e.target.checked)}
+                                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                        />
+                                    </td>
+                                    <td>
+                                        <select
+                                            className="form-select"
+                                            value={student.group_name}
+                                            onChange={(e) => updateStudent(index, 'group_name', e.target.value)}
+                                            style={{ margin: 0, padding: '0.25rem', fontSize: '0.85rem', height: 'auto' }}
+                                        >
+                                            <option value="">-</option>
+                                            {[...Array(10)].map((_, i) => (
+                                                <option key={i} value={`그룹${i + 1}`}>그룹{i + 1}</option>
+                                            ))}
+                                        </select>
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <button className="btn" onClick={() => removeRow(index)} style={{ padding: '0.25rem', color: 'var(--text-muted)' }}>×</button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* 버튼 액션 바 */}
+                {/* 버튼 액션 바 */}
+                <div className="action-bar" style={{ justifyContent: 'space-between', marginTop: '1rem' }}>
+                    <div className="action-group">
+                        <button className="btn btn-secondary" onClick={addRow}>
+                            + 학생 추가
+                        </button>
+                    </div>
+
+                    <div className="action-group">
+                        {childClassData && (
                             <button
                                 className="btn"
-                                onClick={() => setShowDistributeModal(true)}
+                                onClick={handleDeleteDistributedClass}
                                 style={{
-                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    background: 'var(--error)',
                                     color: 'white',
-                                    border: 'none'
+                                    marginRight: '0.5rem',
+                                    opacity: 0.8
                                 }}
                             >
-                                🔀 반편성
+                                🗑️ 새로운반 삭제
                             </button>
-                            {childClassData && (
-                                <button
-                                    className="btn"
-                                    onClick={handleDeleteDistributedClass}
-                                    disabled={loading}
-                                    style={{
-                                        background: '#dc3545',
-                                        color: 'white',
-                                        border: 'none'
-                                    }}
-                                    title={`새로운반 전체(${childClassData.section_count}개 반)를 삭제하고 기존반으로 돌아갑니다`}
-                                >
-                                    🗑️ 새로운반 전체 삭제
-                                </button>
-                            )}
-                            <button
-                                className="btn btn-success"
-                                onClick={handleSave}
-                                disabled={loading}
-                                style={{ marginLeft: 'auto' }}
-                            >
-                                {loading ? (
-                                    <>
-                                        <span className="loading"></span>
-                                        <span>저장 중...</span>
-                                    </>
-                                ) : (
-                                    '저장'
-                                )}
-                            </button>
-                        </div>
-
-                        {/* 반편성 모달 */}
-                        {showDistributeModal && (
-                            <div style={{
-                                position: 'fixed',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                background: 'rgba(0, 0, 0, 0.5)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                zIndex: 1000
-                            }}>
-                                <div style={{
-                                    background: 'white',
-                                    padding: '2rem',
-                                    borderRadius: '12px',
-                                    maxWidth: '500px',
-                                    width: '90%'
-                                }}>
-                                    <h2 style={{ marginTop: 0, color: '#667eea' }}>🔀 반편성</h2>
-                                    <p style={{ color: '#666', marginBottom: '1.5rem' }}>
-                                        현재 학급의 모든 학생을 새로운 반으로 편성합니다.<br />
-                                        등수, 성별, 그룹, 문제아, 특수반을 고려하여 균등하게 배치됩니다.
-                                    </p>
-
-                                    <div style={{ marginBottom: '1.5rem' }}>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                                            새로운 반 수
-                                        </label>
-                                        <input
-                                            type="number"
-                                            className="form-input"
-                                            value={newSectionCount}
-                                            onChange={(e) => setNewSectionCount(parseInt(e.target.value) || 2)}
-                                            min="2"
-                                            max="20"
-                                            style={{ width: '100%' }}
-                                        />
-                                        <small style={{ color: '#999' }}>2개 ~ 20개 반으로 편성 가능합니다.</small>
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                        <button
-                                            className="btn btn-secondary"
-                                            onClick={() => setShowDistributeModal(false)}
-                                        >
-                                            취소
-                                        </button>
-                                        <button
-                                            className="btn"
-                                            onClick={handleDistribute}
-                                            style={{
-                                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                                color: 'white',
-                                                border: 'none'
-                                            }}
-                                        >
-                                            반편성 시작
-                                        </button>
-                                    </div>
-                                </div>
+                        )}
+                        {errorMsg && (
+                            <div style={{ color: 'var(--error)', fontWeight: 'bold', marginRight: '1rem', alignSelf: 'center', whiteSpace: 'pre-wrap', textAlign: 'right' }}>
+                                ⚠️ {errorMsg}
                             </div>
                         )}
+                        <button
+                            className="btn"
+                            onClick={() => {
+                                setErrorMsg(null);
+                                if (!classId || !currentSection) {
+                                    setErrorMsg('학급 정보가 없습니다.');
+                                    return;
+                                }
+
+                                // --- 마감 해지 로직 ---
+                                if (isCompleted) {
+                                    setConfirmAction('unmark');
+                                    setShowConfirmModal(true);
+                                    return;
+                                }
+
+                                // --- 마감 로직 ---
+                                const studentsWithoutRank = students.filter(s => s.name.trim() && s.rank === null);
+                                if (studentsWithoutRank.length > 0) {
+                                    const names = studentsWithoutRank.map(s => s.name).join(', ');
+                                    setErrorMsg(`석차가 입력되지 않은 학생이 있습니다 (${studentsWithoutRank.length}명)\n: ${names}`);
+                                    return;
+                                }
+
+                                setConfirmAction('complete');
+                                setShowConfirmModal(true);
+                            }}
+                            style={{
+                                background: isCompleted ? 'var(--text-secondary)' : 'var(--success)',
+                                color: 'white',
+                                fontWeight: 'bold',
+                                paddingLeft: '2rem',
+                                paddingRight: '2rem',
+                                boxShadow: isCompleted ? 'none' : '0 4px 12px rgba(16, 185, 129, 0.3)',
+                                transition: 'all 0.3s'
+                            }}
+                        >
+                            {isCompleted ? '🔓 마감 해지' : '✅ 명렬표 마감'}
+                        </button>
                     </div>
                 </div>
             </div>
+
+            {/* 반편성 모달 */}
+            {
+                showDistributeModal && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1000
+                    }}>
+                        <div style={{
+                            background: 'white',
+                            padding: '2rem',
+                            borderRadius: '12px',
+                            maxWidth: '500px',
+                            width: '90%'
+                        }}>
+                            <h2 style={{ marginTop: 0, color: '#667eea' }}>🔀 반편성</h2>
+                            <p style={{ color: '#666', marginBottom: '1.5rem' }}>
+                                현재 학급의 모든 학생을 새로운 반으로 편성합니다.<br />
+                                등수, 성별, 그룹, 문제아, 특수반을 고려하여 균등하게 배치됩니다.
+                            </p>
+
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                                    새로운 반 수
+                                </label>
+                                <input
+                                    type="number"
+                                    className="form-input"
+                                    value={newSectionCount}
+                                    onChange={(e) => setNewSectionCount(parseInt(e.target.value) || 2)}
+                                    min="2"
+                                    max="20"
+                                    style={{ width: '100%' }}
+                                />
+                                <small style={{ color: '#999' }}>2개 ~ 20개 반으로 편성 가능합니다.</small>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowDistributeModal(false)}
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    className="btn"
+                                    onClick={handleDistribute}
+                                    style={{
+                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                        color: 'white',
+                                        border: 'none'
+                                    }}
+                                >
+                                    반편성 시작
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+
+            {/* 석차 지정 모달 */}
+            {
+                showRankModal && (
+                    <RankModal
+                        students={students}
+                        onClose={() => setShowRankModal(false)}
+                        onSave={(updatedStudents) => {
+                            setStudents(updatedStudents);
+                            setShowRankModal(false);
+                        }}
+                    />
+                )
+            }
+
+            {/* 분리 대상 설정 모달 */}
+            {
+                showSeparationModal && (
+                    <SeparationModal
+                        students={students}
+                        onClose={() => setShowSeparationModal(false)}
+                        onSave={(updatedStudents) => {
+                            setStudents(updatedStudents);
+                            setShowSeparationModal(false);
+                        }}
+                    />
+                )
+            }
+            {/* 확인 모달 */}
+            {showConfirmModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 2000
+                }}>
+                    <div style={{
+                        background: 'white',
+                        padding: '2rem',
+                        borderRadius: '12px',
+                        maxWidth: '400px',
+                        width: '90%',
+                        textAlign: 'center',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+                    }}>
+                        <h3 style={{ marginTop: 0 }}>
+                            {confirmAction === 'complete' ? '명렬표 마감' : '마감 해지'}
+                        </h3>
+                        <p style={{ color: '#666', marginBottom: '2rem' }}>
+                            {confirmAction === 'complete'
+                                ? '이 반의 학생 정보 입력을 마감하시겠습니까?\n모든 정보가 저장됩니다.'
+                                : '마감을 해지하시겠습니까?\n다시 정보를 수정할 수 있게 됩니다.'}
+                        </p>
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => setShowConfirmModal(false)}
+                            >
+                                취소
+                            </button>
+                            <button
+                                className="btn"
+                                onClick={async () => {
+                                    setShowConfirmModal(false);
+                                    setLoading(true);
+                                    try {
+                                        if (confirmAction === 'complete') {
+                                            // 학생 정보 저장
+                                            const validStudents = students.filter(s => s.name.trim());
+                                            if (validStudents.length > 0) {
+                                                await fetch('/api/students', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({
+                                                        classId,
+                                                        section: currentSection,
+                                                        students: validStudents,
+                                                    }),
+                                                });
+                                            }
+                                            // 마감 상태 업데이트
+                                            const response = await fetch(`/api/classes/${classId}`, {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ section: currentSection, status: 'completed' })
+                                            });
+                                            if (response.ok) {
+                                                alert('✅ 완료되었습니다!');
+                                                setIsCompleted(true);
+                                                router.refresh();
+                                                await loadClassData();
+                                            } else {
+                                                throw new Error('마감 처리 실패');
+                                            }
+                                        } else {
+                                            // 마감 해지
+                                            const response = await fetch(`/api/classes/${classId}`, {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ section: currentSection, status: 'in_progress' })
+                                            });
+                                            if (response.ok) {
+                                                alert('마감이 해지되었습니다.');
+                                                setIsCompleted(false);
+                                                router.refresh();
+                                                await loadClassData();
+                                            } else {
+                                                throw new Error('해지 실패');
+                                            }
+                                        }
+                                    } catch (e: any) {
+                                        setErrorMsg('오류 발생: ' + (e.message || '알 수 없는 오류'));
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                }}
+                                style={{
+                                    background: confirmAction === 'complete' ? 'var(--success)' : 'var(--text-secondary)',
+                                    color: 'white'
+                                }}
+                            >
+                                {confirmAction === 'complete' ? '확인 (마감)' : '확인 (해지)'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
