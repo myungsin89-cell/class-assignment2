@@ -30,17 +30,14 @@ export async function POST(request: NextRequest) {
             }, { status: 404 });
         }
 
-        // PostgreSQL transaction을 사용하여 데이터 저장
-        await sql.begin(async (sql) => {
-            // 기존 학생 데이터 삭제
-            await sql`DELETE FROM students WHERE class_id = ${classIdInt} AND section_number = ${sectionInt}`;
+        // 기존 학생 데이터 삭제
+        await sql`DELETE FROM students WHERE class_id = ${classIdInt} AND section_number = ${sectionInt}`;
 
-            // 새로운 학생 데이터 삽입
-            for (const student of students) {
-                await sql`INSERT INTO students (class_id, section_number, name, gender, is_problem_student, is_special_class, group_name, rank, birth_date, contact, notes, is_underachiever)
-                         VALUES (${classIdInt}, ${sectionInt}, ${student.name}, ${student.gender}, ${student.is_problem_student ? 1 : 0}, ${student.is_special_class ? 1 : 0}, ${student.group_name || null}, ${student.rank || null}, ${student.birth_date || null}, ${student.contact || null}, ${student.notes || null}, ${student.is_underachiever ? 1 : 0})`;
-            }
-        });
+        // 새로운 학생 데이터 삽입
+        for (const student of students) {
+            await sql`INSERT INTO students (class_id, section_number, name, gender, is_problem_student, is_special_class, group_name, rank, birth_date, contact, notes, is_underachiever)
+                     VALUES (${classIdInt}, ${sectionInt}, ${student.name}, ${student.gender}, ${student.is_problem_student ? 1 : 0}, ${student.is_special_class ? 1 : 0}, ${student.group_name || null}, ${student.rank || null}, ${student.birth_date || null}, ${student.contact || null}, ${student.notes || null}, ${student.is_underachiever ? 1 : 0})`;
+        }
 
         return NextResponse.json({ success: true, count: students.length });
     } catch (error) {

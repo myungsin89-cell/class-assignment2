@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 모든 반의 학생 가져오기 (반별로 그룹화)
-        const allStudents: Student[] = await sql`SELECT * FROM students WHERE class_id = ${classId} ORDER BY section_number, gender, rank ASC, name`;
+        const allStudents = await sql`SELECT * FROM students WHERE class_id = ${classId} ORDER BY section_number, gender, rank ASC, name` as Student[];
 
         if (allStudents.length === 0) {
             return NextResponse.json({ error: 'No students found' }, { status: 400 });
@@ -155,15 +155,13 @@ export async function POST(request: NextRequest) {
         const newClassId = result[0].id;
 
         // 학생들을 새 클래스에 배치 (이전 반 번호 저장)
-        // PostgreSQL에서는 transaction을 사용하여 모든 INSERT를 한번에 처리
-        await sql.begin(async (sql) => {
-            for (const [sectionIndex, sectionStudents] of sections.entries()) {
-                for (const student of sectionStudents) {
-                    await sql`INSERT INTO students (class_id, section_number, name, gender, is_problem_student, is_special_class, group_name, rank, previous_section)
-                             VALUES (${newClassId}, ${sectionIndex + 1}, ${student.name}, ${student.gender}, ${student.is_problem_student}, ${student.is_special_class}, ${student.group_name}, ${student.rank}, ${(student as any).section_number})`;
-                }
+        // 모든 INSERT를 순차적으로 처리
+        for (const [sectionIndex, sectionStudents] of sections.entries()) {
+            for (const student of sectionStudents) {
+                await sql`INSERT INTO students (class_id, section_number, name, gender, is_problem_student, is_special_class, group_name, rank, previous_section)
+                         VALUES (${newClassId}, ${sectionIndex + 1}, ${student.name}, ${student.gender}, ${student.is_problem_student}, ${student.is_special_class}, ${student.group_name}, ${student.rank}, ${(student as any).section_number})`;
             }
-        });
+        }
 
         // 반별 통계 생성
         const stats = sections.map((students, index) => ({
