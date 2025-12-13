@@ -681,9 +681,8 @@ export default function AllocationPage() {
 
             setAllocation(newAllocation);
 
-            // 하이라이트 설정
-            setHighlightedStudents(new Set([studentA.id]));
-            setTimeout(() => setHighlightedStudents(new Set()), 3000);
+            // 하이라이트 설정 (확정 및 저장까지 유지)
+            setHighlightedStudents(prev => new Set([...prev, studentA.id]));
 
             // 이동 기록 추가
             setSwapHistory([{ studentA, originSectionIndex: classAIndex, targetSectionIndex: targetSection, timestamp: Date.now() }, ...swapHistory]);
@@ -754,9 +753,8 @@ export default function AllocationPage() {
 
         setAllocation(newAllocation);
 
-        // 하이라이트 설정
-        setHighlightedStudents(new Set([stA.id, stB.id]));
-        setTimeout(() => setHighlightedStudents(new Set()), 3000);
+        // 하이라이트 설정 (확정 및 저장까지 유지)
+        setHighlightedStudents(prev => new Set([...prev, stA.id, stB.id]));
 
         // 교환 기록 추가
         setSwapHistory([{ studentA: stA, studentB: stB, timestamp: Date.now() }, ...swapHistory]);
@@ -824,9 +822,8 @@ export default function AllocationPage() {
 
         setAllocation(newAllocation);
 
-        // 하이라이트 설정
-        setHighlightedStudents(new Set([swap.studentA.id]));
-        setTimeout(() => setHighlightedStudents(new Set()), 3000);
+        // 하이라이트 설정 (확정 및 저장까지 유지)
+        setHighlightedStudents(prev => new Set([...prev, swap.studentA.id]));
 
         // 기록에서 제거
         setSwapHistory(swapHistory.filter((_, i) => i !== index));
@@ -890,8 +887,9 @@ export default function AllocationPage() {
             setIsSavedAllocation(true); // 저장 완료 플래그 설정
 
             if (isManual) {
-                // 확정 저장 시 토스트 알림
+                // 확정 저장 시 토스트 알림 및 하이라이트 초기화
                 setToast({ message: '배정 결과가 최종 확정되었습니다!', type: 'success' });
+                setHighlightedStudents(new Set()); // 하이라이트 초기화
             } else {
                 // 자동 저장 시 콘솔 로그만
                 console.log('💾 배정 자동 저장 완료');
@@ -1040,22 +1038,53 @@ export default function AllocationPage() {
     const getRecommendedStudents = () => {
         if (!studentA || !allocation) return [];
 
+        console.log('🔍 추천 로직 실행:', {
+            studentA: studentA.name,
+            section_number: studentA.section_number,
+            rank: studentA.rank
+        });
+
         const classAIndex = allocation.classes.findIndex(c =>
             c.students.some(s => s.id === studentA.id)
         );
 
-        return allocation.classes
+        const candidates = allocation.classes
             .flatMap((c, idx) => idx !== classAIndex ? c.students : [])
             .filter(s => {
-                // 같은 성별 우선
-                if (s.gender !== studentA.gender) return false;
-                // 석차 비슷한 학생
-                if (studentA.rank && s.rank) {
-                    return Math.abs(studentA.rank - s.rank) <= 5;
+                console.log(`  체크 중: ${s.name}, section_number=${s.section_number}, rank=${s.rank}, gender=${s.gender}`);
+
+                // 1. 원래 같은 반이었던 학생 (section_number가 같은)
+                if (!studentA.section_number || s.section_number !== studentA.section_number) {
+                    console.log(`    ❌ section_number 불일치`);
+                    return false;
                 }
-                return true;
+
+                // 2. 성별 일치
+                if (s.gender !== studentA.gender) {
+                    console.log(`    ❌ 성별 불일치`);
+                    return false;
+                }
+
+                // 3. 석차 차이 5등 이내
+                if (studentA.rank && s.rank) {
+                    const diff = Math.abs(studentA.rank - s.rank);
+                    if (diff <= 5) {
+                        console.log(`    ✅ 추천! 석차 차이: ${diff}`);
+                        return true;
+                    } else {
+                        console.log(`    ❌ 석차 차이 초과: ${diff}`);
+                        return false;
+                    }
+                }
+
+                // 석차가 없는 경우는 제외
+                console.log(`    ❌ 석차 없음`);
+                return false;
             })
             .slice(0, 5);
+
+        console.log('📋 추천 결과:', candidates.length, '명');
+        return candidates;
     };
 
     if (loading) return <div className="container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="loading"></div></div>;
@@ -2843,7 +2872,7 @@ export default function AllocationPage() {
                                             borderRadius: '8px',
                                             fontSize: '0.75rem'
                                         }}>
-                                            <div style={{ fontWeight: '600', marginBottom: '0.5rem' }}>💡 추천 학생 (같은 성별, 비슷한 석차)</div>
+                                            <div style={{ fontWeight: '600', marginBottom: '0.5rem' }}>💡 추천 학생 (같은 반·성별, 석차 ±5등)</div>
                                             {recommendedStudents.map(s => {
                                                 const classIndex = allocation!.classes.findIndex(c => c.students.some(st => st.id === s.id));
                                                 return (

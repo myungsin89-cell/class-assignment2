@@ -3,6 +3,7 @@ export interface Student {
     name: string;
     gender: 'M' | 'F';
     section_number?: number;
+    previous_section?: number;
     group_name: string;
     is_problem_student: boolean;
     is_special_class: boolean;
