@@ -2507,25 +2507,25 @@ function OuterGroupCreationModal({ type = 'outer', allStudents, existingGroupNam
             }} onClick={e => e.stopPropagation()}>
                 {/* 헤더 */}
                 <div style={{
-                    padding: '1.5rem 2rem',
+                    padding: '1rem 1.5rem',
                     borderBottom: '1px solid #334155',
                     background: '#0f172a'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#f1f5f9' }}>
+                        <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#f1f5f9' }}>
                             {type === 'outer' ? '⚡ 반 외부 그룹 생성' : '🤝 같은 반 배정 그룹 생성'}
                         </h2>
                         <button onClick={onClose} style={{
                             background: 'none',
                             border: 'none',
-                            fontSize: '2rem',
+                            fontSize: '1.8rem',
                             cursor: 'pointer',
                             color: '#94a3b8',
-                            padding: '0.5rem',
+                            padding: '0.25rem',
                             lineHeight: 1
                         }}>×</button>
                     </div>
-                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: '#94a3b8' }}>
+                    <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
                         {type === 'outer'
                             ? '서로 다른 반에 배정되어야 하는 학생들을 지정하세요.'
                             : '같은 반에 배정되어야 하는 학생들을 지정하세요.'}
@@ -2534,10 +2534,10 @@ function OuterGroupCreationModal({ type = 'outer', allStudents, existingGroupNam
 
                 {/* 그룹명 입력 */}
                 <div style={{
-                    padding: '1.5rem 2rem',
+                    padding: '1rem 1.5rem',
                     borderBottom: '1px solid #334155'
                 }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#e2e8f0', fontWeight: 600 }}>
+                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 600 }}>
                         📝 그룹명
                     </label>
                     <input
@@ -2547,33 +2547,33 @@ function OuterGroupCreationModal({ type = 'outer', allStudents, existingGroupNam
                         value={groupName}
                         onChange={(e) => setGroupName(e.target.value)}
                         autoFocus
-                        style={{ width: '100%', padding: '0.75rem', fontSize: '1rem' }}
+                        style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                     />
                 </div>
 
                 {/* 선택된 학생 미리보기 */}
                 {selectedStudents.length > 0 && (
                     <div style={{
-                        padding: '1.5rem 2rem',
+                        padding: '0.75rem 1.5rem',
                         borderBottom: '1px solid #334155',
                         background: '#0f172a'
                     }}>
-                        <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#e2e8f0', fontWeight: 600 }}>
+                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 600 }}>
                             선택된 학생 ({selectedStudents.length}명)
                         </p>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                             {selectedStudents.map((student, index) => (
                                 <div
                                     key={index}
                                     style={{
                                         background: '#1e293b',
-                                        padding: '0.4rem 0.8rem',
+                                        padding: '0.3rem 0.6rem',
                                         borderRadius: '6px',
                                         border: '1px solid #334155',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '0.5rem',
-                                        fontSize: '0.85rem'
+                                        gap: '0.4rem',
+                                        fontSize: '0.8rem'
                                     }}
                                 >
                                     <span style={{ color: '#94a3b8' }}>[{student.section_number}반]</span>
@@ -2606,9 +2606,9 @@ function OuterGroupCreationModal({ type = 'outer', allStudents, existingGroupNam
 
                 {/* 학생 검색 */}
                 <div style={{
-                    padding: '1.5rem 2rem 0 2rem'
+                    padding: '0.75rem 1.5rem'
                 }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#e2e8f0', fontWeight: 600 }}>
+                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 600 }}>
                         🔍 학생 검색
                     </label>
                     <input
@@ -2617,7 +2617,7 @@ function OuterGroupCreationModal({ type = 'outer', allStudents, existingGroupNam
                         placeholder="학생 이름으로 검색..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ width: '100%', padding: '0.75rem', fontSize: '1rem' }}
+                        style={{ width: '100%', padding: '0.6rem', fontSize: '0.95rem' }}
                     />
                 </div>
 
@@ -2625,7 +2625,7 @@ function OuterGroupCreationModal({ type = 'outer', allStudents, existingGroupNam
                 <div style={{
                     flex: 1,
                     overflowY: 'auto',
-                    padding: '1.5rem 2rem',
+                    padding: '1rem 1.5rem',
                     background: '#0f172a'
                 }}>
                     {filteredStudents.length === 0 ? (
@@ -2687,7 +2687,7 @@ function OuterGroupCreationModal({ type = 'outer', allStudents, existingGroupNam
 
                 {/* 하단 버튼 */}
                 <div style={{
-                    padding: '1.5rem 2rem',
+                    padding: '1rem 1.5rem',
                     borderTop: '1px solid #334155',
                     background: '#0f172a',
                     display: 'flex',
