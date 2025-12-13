@@ -8,7 +8,7 @@ export async function GET(
     try {
         const { id } = await context.params;
         const classDataResult = await sql`SELECT * FROM classes WHERE id = ${id}`;
-        const classData = classDataResult[0] as any;
+        const classData = classDataResult[0] as Record<string, unknown> | undefined;
 
         if (!classData) {
             return NextResponse.json({ error: 'Class not found' }, { status: 404 });
@@ -16,7 +16,7 @@ export async function GET(
 
         // 이 클래스로부터 생성된 분산 클래스(자식 클래스)가 있는지 확인
         const childClassResult = await sql`SELECT id FROM classes WHERE parent_class_id = ${id} ORDER BY id DESC LIMIT 1`;
-        const childClass = childClassResult[0] as any;
+        const childClass = childClassResult[0] as { id: string } | undefined;
 
         if (childClass) {
             classData.child_class_id = childClass.id;
@@ -49,7 +49,7 @@ export async function PUT(
             // conditions_completed 컬럼 확인/추가
             try {
                 await sql`ALTER TABLE classes ADD COLUMN IF NOT EXISTS conditions_completed BOOLEAN DEFAULT FALSE`;
-            } catch (e) {
+            } catch (_e) {
                 console.log('conditions_completed column already exists or cannot be added');
             }
 
@@ -99,7 +99,7 @@ export async function PUT(
                     special_reduction_mode = ${special_reduction_mode || 'flexible'}
                 WHERE id = ${id}
             `;
-        } catch (columnError) {
+        } catch (_columnError) {
             // 컬럼이 없으면 추가 시도
             console.log('Special reduction columns not found, attempting to add...');
             try {
@@ -147,7 +147,7 @@ export async function PATCH(
 
         // 현재 section_statuses 가져오기
         const classDataResult = await sql`SELECT section_statuses FROM classes WHERE id = ${id}`;
-        const classData = classDataResult[0] as any;
+        const classData = classDataResult[0] as { section_statuses?: string } | undefined;
 
         if (!classData) {
             return NextResponse.json({ error: 'Class not found' }, { status: 404 });
@@ -157,7 +157,7 @@ export async function PATCH(
         let statuses: Record<string, string> = {};
         try {
             statuses = JSON.parse(classData.section_statuses || '{}');
-        } catch (e) {
+        } catch (_e) {
             statuses = {};
         }
 
