@@ -550,32 +550,45 @@ export default function StudentsPage() {
             return;
         }
 
+        console.log('💾 저장 시작:', {
+            classId,
+            section: currentSection,
+            studentCount: validStudents.length
+        });
+
         setLoading(true);
 
         try {
+            const requestData = {
+                classId,
+                section: currentSection,
+                students: validStudents,
+            };
+
+            console.log('📤 요청 데이터:', requestData);
+
             const response = await fetch('/api/students', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    classId,
-                    section: currentSection,
-                    students: validStudents,
-                }),
+                body: JSON.stringify(requestData),
             });
 
+            console.log('📥 응답 상태:', response.status, response.statusText);
+
             if (!response.ok) {
-                const errorData = await response.json();
-                console.error('Server error:', errorData);
-                throw new Error(errorData.error || 'Failed to save students');
+                const errorData = await response.json().catch(() => ({ error: '서버 응답 파싱 실패' }));
+                console.error('❌ 서버 에러:', errorData);
+                throw new Error(errorData.error || `서버 오류 (${response.status})`);
             }
 
             const result = await response.json();
-            console.log('Save successful:', result);
-            alert('학생 정보가 저장되었습니다!');
+            console.log('✅ 저장 성공:', result);
+            alert(`학생 정보가 저장되었습니다! (${result.count}명)`);
             loadStudents();
         } catch (error) {
-            console.error('Error:', error);
-            alert(`저장 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+            console.error('❌ 저장 실패:', error);
+            const errorMsg = error instanceof Error ? error.message : '알 수 없는 오류';
+            alert(`저장 중 오류가 발생했습니다:\n${errorMsg}\n\n콘솔(F12)에서 자세한 내용을 확인하세요.`);
         } finally {
             setLoading(false);
         }

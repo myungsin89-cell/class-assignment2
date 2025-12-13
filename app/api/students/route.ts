@@ -3,10 +3,19 @@ import sql from '@/lib/db';
 
 export async function POST(request: NextRequest) {
     try {
+        console.log('📥 [API] POST /api/students 요청 받음');
+
         const { students, classId, section } = await request.json();
+
+        console.log('📋 [API] 요청 데이터:', {
+            classId,
+            section,
+            studentCount: students?.length
+        });
 
         // 타입 검증
         if (!classId || !students || !Array.isArray(students)) {
+            console.error('❌ [API] 잘못된 요청 데이터:', { classId, students: typeof students });
             return NextResponse.json({
                 error: 'Invalid request data. classId and students array are required.'
             }, { status: 400 });
@@ -17,23 +26,29 @@ export async function POST(request: NextRequest) {
         const sectionInt = parseInt(section || '1', 10);
 
         if (isNaN(classIdInt) || isNaN(sectionInt)) {
+            console.error('❌ [API] 잘못된 숫자 형식:', { classId, section });
             return NextResponse.json({
                 error: 'classId and section must be valid numbers.'
             }, { status: 400 });
         }
 
         // class가 존재하는지 확인
+        console.log('🔍 [API] 클래스 확인:', classIdInt);
         const classCheck = await sql`SELECT id, section_statuses FROM classes WHERE id = ${classIdInt}`;
         if (classCheck.length === 0) {
+            console.error('❌ [API] 클래스를 찾을 수 없음:', classIdInt);
             return NextResponse.json({
                 error: `Class with id ${classIdInt} does not exist.`
             }, { status: 404 });
         }
 
+        console.log('✅ [API] 클래스 확인 완료:', classCheck[0]);
+
         // 마감 상태 확인 - 마감된 반은 수정 불가
         try {
             const statuses = JSON.parse(classCheck[0].section_statuses || '{}');
             if (statuses[sectionInt] === 'completed') {
+                console.warn('⚠️ [API] 마감된 반 수정 시도:', sectionInt);
                 return NextResponse.json({
                     error: '마감된 학급은 수정할 수 없습니다. 마감 해제 후 다시 시도해주세요.'
                 }, { status: 403 });
@@ -43,27 +58,24 @@ export async function POST(request: NextRequest) {
         }
 
         // 기존 학생 데이터 삭제
+        console.log('🗑️ [API] 기존 학생 데이터 삭제:', { classIdInt, sectionInt });
         await sql`DELETE FROM students WHERE class_id = ${classIdInt} AND section_number = ${sectionInt}`;
 
         // 새로운 학생 데이터 삽입
-        console.log('💾 저장할 학생 데이터:', students.map(s => ({
-            name: s.name,
-            group_name: s.group_name,
-            is_underachiever: s.is_underachiever,
-            is_special_class: s.is_special_class,
-            is_problem_student: s.is_problem_student,
-            is_transferring_out: s.is_transferring_out
-        })));
+        console.log('💾 [API] 학생 데이터 삽입 시작:', students.length, '명');
 
         for (const student of students) {
             await sql`INSERT INTO students (class_id, section_number, name, gender, is_problem_student, is_special_class, group_name, rank, birth_date, contact, notes, is_underachiever, is_transferring_out)
                      VALUES (${classIdInt}, ${sectionInt}, ${student.name}, ${student.gender}, ${student.is_problem_student || false}, ${student.is_special_class || false}, ${student.group_name || null}, ${student.rank || null}, ${student.birth_date || null}, ${student.contact || null}, ${student.notes || null}, ${student.is_underachiever || false}, ${student.is_transferring_out || false})`;
         }
 
+        console.log('✅ [API] 학생 저장 완료:', students.length, '명');
         return NextResponse.json({ success: true, count: students.length });
     } catch (error) {
-        console.error('Error creating students:', error);
+        console.error('❌ [API] 학생 저장 실패:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorStack = error instanceof Error ? error.stack : '';
+        console.error('❌ [API] 에러 스택:', errorStack);
         return NextResponse.json({
             error: 'Failed to create students',
             details: errorMessage
