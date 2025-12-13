@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
 import Database from 'better-sqlite3';
 import path from 'path';
@@ -14,7 +15,7 @@ function generateName() {
 }
 
 export async function GET() {
-    let db: any;
+    let db: ReturnType<typeof Database> | undefined;
     try {
         const dbPath = path.join(process.cwd(), 'students.db');
         console.log('Opening DB at:', dbPath);
@@ -24,11 +25,11 @@ export async function GET() {
         const schools = db.prepare('SELECT * FROM schools').all();
         let schoolId;
 
-        const testSchool = schools.find((s: any) => s.name === 'test');
+        const testSchool = schools.find((s: any) => s.name === 'test') as { id: number; name: string } | undefined;
         if (testSchool) {
             schoolId = testSchool.id;
         } else if (schools.length > 0) {
-            schoolId = schools[0].id;
+            schoolId = (schools[0] as any).id;
         } else {
             const info = db.prepare('INSERT INTO schools (name, password) VALUES (?, ?)').run('test', 'test');
             schoolId = info.lastInsertRowid;
@@ -39,7 +40,7 @@ export async function GET() {
         const grade = 2;
         const sectionCount = 3;
 
-        let classRow = db.prepare('SELECT * FROM classes WHERE school_id = ? AND grade = ?').get(schoolId, grade);
+        let classRow: any = db.prepare('SELECT * FROM classes WHERE school_id = ? AND grade = ?').get(schoolId, grade);
 
         if (!classRow) {
             const info = db.prepare(`
@@ -108,7 +109,7 @@ export async function GET() {
         }
 
         // 4. Mark as Completed ("마감")
-        const statuses: any = {};
+        const statuses: Record<string, string> = {};
         for (let s = 1; s <= sectionCount; s++) statuses[s] = 'completed';
 
         db.prepare('UPDATE classes SET section_statuses = ? WHERE id = ?')
@@ -120,9 +121,9 @@ export async function GET() {
             details: { schoolId, classId, totalStudents }
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Population Error:', error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     } finally {
         if (db) db.close();
     }

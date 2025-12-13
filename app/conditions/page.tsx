@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     DndContext,
@@ -37,11 +37,11 @@ interface Group {
     id: string;
     name: string;
     students: Student[];
-    type: 'outer' | 'inner';
+    type: 'outer' | 'inner' | 'sameClass';
     section?: number;
 }
 
-export default function ConditionsPage() {
+function ConditionsPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const classId = searchParams.get('classId');
@@ -264,7 +264,7 @@ export default function ConditionsPage() {
 
         // ID를 Student 객체로 변환하는 헬퍼
         const getStudentsByIds = (ids: Set<number>): Student[] => {
-            return students.filter(s => ids.has(s.id));
+            return students.filter(s => s.id !== undefined && ids.has(s.id));
         };
 
         // SEP 그룹 처리
@@ -653,8 +653,7 @@ export default function ConditionsPage() {
                         background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%)',
                         border: '1px solid rgba(16, 185, 129, 0.3)',
                         flexDirection: 'column',
-                        alignItems: 'center',
-                        textAlign: 'center',
+                        alignItems: 'flex-start',
                         position: 'relative',
                         transition: 'all 0.3s ease',
                         transform: 'scale(1.02)',
@@ -698,8 +697,7 @@ export default function ConditionsPage() {
                         background: isSaved ? 'rgba(59, 130, 246, 0.1)' : 'rgba(30, 41, 59, 0.4)',
                         border: isSaved ? '2px solid #3b82f6' : '1px solid var(--border)',
                         flexDirection: 'column',
-                        alignItems: 'center',
-                        textAlign: 'center',
+                        alignItems: 'flex-start',
                         opacity: isSaved ? 1 : 0.5,
                         transition: 'all 0.3s ease'
                     }}>
@@ -770,7 +768,7 @@ export default function ConditionsPage() {
                             alignItems: 'start'
                         }}>
                             {/* 좌측: 반 내부 분리 (3행 전체 차지) */}
-                            <div style={{ gridRow: '1 / 4', padding: 0, flexDirection: 'column', alignItems: 'stretch', height: '100%', display: 'flex' }} className="stat-card">
+                            <div style={{ gridRow: '1 / 4', padding: 0, flexDirection: 'column', alignItems: 'stretch', height: '100%', display: 'flex', overflow: 'hidden' }} className="stat-card">
                                 <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>
                                     <h2 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                                         🏫 반 내부 분리
@@ -800,7 +798,8 @@ export default function ConditionsPage() {
                                                 border: '1px solid var(--border)',
                                                 display: 'flex',
                                                 flexDirection: 'column',
-                                                minHeight: '120px'
+                                                minHeight: '120px',
+                                                overflow: 'hidden'
                                             }}>
                                                 {/* 카드 헤더 */}
                                                 <div style={{
@@ -899,10 +898,10 @@ export default function ConditionsPage() {
 
 
                             {/* 우측 1행: 반 외부 분리 */}
-                            <div className="stat-card" style={{ padding: 0, flexDirection: 'column', alignItems: 'stretch' }}>
-                                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-                                    <div style={{ textAlign: 'center' }}>
-                                        <h2 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                            <div className="stat-card" style={{ padding: 0, flexDirection: 'column', alignItems: 'stretch', overflow: 'hidden' }}>
+                                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ textAlign: 'left' }}>
+                                        <h2 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             ⚡ 반 외부 분리
                                         </h2>
                                         <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
@@ -915,10 +914,10 @@ export default function ConditionsPage() {
                                         disabled={isConditionsCompleted}
                                         style={{
                                             fontSize: '0.9rem',
+                                            padding: '0.5rem 1rem',
                                             opacity: isConditionsCompleted ? 0.5 : 1,
                                             cursor: isConditionsCompleted ? 'not-allowed' : 'pointer',
-                                            position: 'absolute',
-                                            right: '1.5rem'
+                                            whiteSpace: 'nowrap'
                                         }}
                                     >
                                         + 그룹 추가
@@ -946,10 +945,10 @@ export default function ConditionsPage() {
                             </div>
 
                             {/* 우측 2행: 같은 반 배정 (전체 너비) */}
-                            <div className="stat-card" style={{ padding: 0, flexDirection: 'column', alignItems: 'stretch' }}>
-                                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-                                    <div style={{ textAlign: 'center' }}>
-                                        <h2 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                            <div className="stat-card" style={{ padding: 0, flexDirection: 'column', alignItems: 'stretch', overflow: 'hidden' }}>
+                                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ textAlign: 'left' }}>
+                                        <h2 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             🤝 같은 반 배정
                                         </h2>
                                         <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
@@ -962,10 +961,10 @@ export default function ConditionsPage() {
                                         disabled={isConditionsCompleted}
                                         style={{
                                             fontSize: '0.9rem',
+                                            padding: '0.5rem 1rem',
                                             opacity: isConditionsCompleted ? 0.5 : 1,
                                             cursor: isConditionsCompleted ? 'not-allowed' : 'pointer',
-                                            position: 'absolute',
-                                            right: '1.5rem'
+                                            whiteSpace: 'nowrap'
                                         }}
                                     >
                                         + 그룹 추가
@@ -2033,6 +2032,7 @@ function InnerSeparationModal({ section, allStudents, innerGroups, onClose, onSa
 }
 
 // ---- Sub Components ----
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function GroupItem({ group, color, onRemoveStudent, onDeleteGroup, type }: any) {
     const { setNodeRef } = useDroppable({
         id: group.id,
@@ -2069,6 +2069,7 @@ function GroupItem({ group, color, onRemoveStudent, onDeleteGroup, type }: any) 
                 {group.students.length === 0 ? (
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>드래그하세요</span>
                 ) : (
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     group.students.map((s: any, idx: number) => (
                         <div key={idx} style={{
                             padding: '0.25rem 0.5rem',
@@ -2407,7 +2408,7 @@ function DuplicateNamesCard({ allStudents }: { allStudents: Student[] }) {
                                         fontWeight: 600,
                                         minWidth: '3rem'
                                     }}>
-                                        • "{group.givenName}"
+                                        • &quot;{group.givenName}&quot;
                                     </span>
                                     <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
                                         ({group.students.length}명)
@@ -2707,3 +2708,10 @@ function OuterGroupCreationModal({ type = 'outer', allStudents, existingGroupNam
     );
 }
 
+export default function ConditionsPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><span className="loading loading-spinner loading-lg"></span></div>}>
+            <ConditionsPageContent />
+        </Suspense>
+    );
+}

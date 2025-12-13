@@ -800,6 +800,7 @@ export default function AllocationPage() {
     };
 
     // 단독 이동 취소 수행
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const performUndoMove = (swap: any, index: number) => {
         if (!allocation) return;
         const newAllocation = { ...allocation };
@@ -832,6 +833,7 @@ export default function AllocationPage() {
     };
 
     // 1:1 교환 취소 수행
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const performUndoSwap = (swap: any, index: number) => {
         // 다시 교환 (원복)
         const tempA = studentA;
@@ -1658,7 +1660,7 @@ export default function AllocationPage() {
                                             }}>
                                                 <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                     <span>{dup.hasSameSectionConflict ? '⚠️' : '✅'}</span>
-                                                    <span>"{dup.givenName}" ({dup.students.length}명)</span>
+                                                    <span>&quot;{dup.givenName}&quot; ({dup.students.length}명)</span>
                                                     {dup.hasSameSectionConflict && <span style={{ fontSize: '0.75rem', color: '#ef4444' }}>같은 반 {dup.students.filter((s, i, arr) => arr.findIndex(x => x.sectionId === s.sectionId) !== i).length}명</span>}
                                                 </div>
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.85rem' }}>
@@ -1773,7 +1775,7 @@ export default function AllocationPage() {
                                 저장된 배정을 불러왔습니다
                             </h4>
                             <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                                제약조건을 변경한 경우 <strong style={{ color: '#f59e0b' }}>'다시 편성'</strong>을 클릭하여 새로운 조건을 반영해주세요.
+                                제약조건을 변경한 경우 <strong style={{ color: '#f59e0b' }}>&apos;다시 편성&apos;</strong>을 클릭하여 새로운 조건을 반영해주세요.
                             </p>
                         </div>
                         <button

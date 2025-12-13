@@ -12,9 +12,9 @@ export async function POST(request: NextRequest) {
         const result = await sql`INSERT INTO classes (school_id, grade, section_count) VALUES (${school_id}, ${grade}, ${section_count}) RETURNING id`;
 
         return NextResponse.json({ id: result[0].id, school_id, grade, section_count });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error creating class:', error);
-        return NextResponse.json({ error: 'Failed to create class', details: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to create class', details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }
 
@@ -83,8 +83,8 @@ export async function DELETE(request: NextRequest) {
             message,
             deletedChildClasses: childClasses.length
         });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error deleting class:', error);
-        return NextResponse.json({ error: 'Failed to delete class', details: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to delete class', details: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }

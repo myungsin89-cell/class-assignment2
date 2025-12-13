@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
         // 기존 클래스 정보 가져오기
         const classInfoResult = await sql`SELECT * FROM classes WHERE id = ${classId} AND school_id = ${schoolId}`;
-        const classInfo: any = classInfoResult[0];
+        const classInfo = classInfoResult[0] as Record<string, unknown> | undefined;
 
         if (!classInfo) {
             return NextResponse.json({ error: 'Class not found' }, { status: 404 });
@@ -220,7 +220,6 @@ export async function POST(request: NextRequest) {
         }
 
         // 반별로 학생 배치
-        const sectionNumbers = Object.keys(studentsBySection).map(Number).sort((a, b) => a - b);
 
         // 일반 학생만 먼저 배치
         const normalStudentsBySection: { [key: number]: Student[] } = {};

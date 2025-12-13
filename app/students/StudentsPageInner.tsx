@@ -179,6 +179,7 @@ export default function StudentsPage() {
             const response = await fetch(`/api/students?classId=${classId}&section=${currentSection}`);
             const data = await response.json();
             if (data.length > 0) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 setStudents(data.map((s: any) => ({
                     id: s.id,
                     name: s.name,
@@ -358,6 +359,7 @@ export default function StudentsPage() {
                 const workbook = XLSX.read(data, { type: 'array' });
                 const sheetName = workbook.SheetNames[0];
                 const sheet = workbook.Sheets[sheetName];
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
                 if (jsonData.length < 2) {
@@ -438,6 +440,7 @@ export default function StudentsPage() {
         setStudents(students.filter((_, i) => i !== index));
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateStudent = (index: number, field: keyof Student, value: any) => {
         if (isCompleted) return;
         const updated = [...students];
@@ -601,8 +604,7 @@ export default function StudentsPage() {
 
         const schoolId = localStorage.getItem('schoolId');
         if (!schoolId) {
-            alert('로그인이 필요합니다.');
-            router.push('/login');
+            router.push('/');
             return;
         }
 
@@ -629,6 +631,7 @@ export default function StudentsPage() {
             }
 
             const result = await response.json();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             alert(`반편성이 완료되었습니다!\n\n${result.stats.map((s: any) =>
                 `${s.section}반: 총 ${s.total}명 (남 ${s.male}, 여 ${s.female}, 문제아 ${s.problem}, 특수반 ${s.special})`
             ).join('\n')}`);
@@ -1441,8 +1444,9 @@ export default function StudentsPage() {
                                                 throw new Error('해지 실패');
                                             }
                                         }
-                                    } catch (e: any) {
-                                        setErrorMsg('오류 발생: ' + (e.message || '알 수 없는 오류'));
+                                    } catch (e) {
+                                        const err = e as Error;
+                                        setErrorMsg('오류 발생: ' + (err.message || '알 수 없는 오류'));
                                     } finally {
                                         setLoading(false);
                                     }

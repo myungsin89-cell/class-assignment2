@@ -27,14 +27,19 @@ export default function Home() {
         alignItems: 'center'
       }}>
         <div style={{
-          fontSize: '1.5rem',
-          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
           background: 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text'
         }}>
-          🎓 반배정 시스템
+          <span style={{ fontSize: '1.5rem' }}>🍃</span>
+          <span style={{ fontSize: '1.8rem', fontWeight: 800 }}>편</span>
+          <span style={{ fontSize: '1rem', fontWeight: 500 }}>안한 학교생활을 위한</span>
+          <span style={{ fontSize: '1.8rem', fontWeight: 800 }}>바</span>
+          <span style={{ fontSize: '1rem', fontWeight: 500 }}>이브 코딩</span>
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
           <button
@@ -93,7 +98,7 @@ export default function Home() {
             marginBottom: '1.5rem',
             lineHeight: 1.2
           }}>
-            공정하고 투명한<br />반배정 시스템
+            공정하고 편안한<br />반배정 시스템
           </h1>
           <p className="fade-in" style={{
             fontSize: '1.25rem',
@@ -143,7 +148,7 @@ export default function Home() {
               왜 반배정 시스템인가요?
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>
-              선생님들의 업무를 덜어주고, 학부모님들께 신뢰를 드립니다.
+              선생님들의 업무를 덜어주고, 여유시간을 보장합니다.
             </p>
           </div>
 
@@ -204,7 +209,7 @@ export default function Home() {
               </h3>
               <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>
                 배정 알고리즘이 완전 공개됩니다.
-                어떤 원리로 배정되는지 학부모님께도 설명 가능합니다.
+                한눈에 알 수 있습니다.
               </p>
             </div>
           </div>
@@ -241,7 +246,7 @@ export default function Home() {
               gap: '2rem',
               padding: '2rem'
             }}>
-              <div style={{
+              <div className="step-icon-1" style={{
                 minWidth: '80px',
                 height: '80px',
                 background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
@@ -252,14 +257,49 @@ export default function Home() {
                 fontSize: '2rem',
                 fontWeight: 700,
                 color: 'white'
-              }}>1</div>
-              <div>
+              }}>📝</div>
+              <div style={{ flex: 1 }}>
                 <h3 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
                   📝 학생 정보 입력
                 </h3>
-                <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.75rem 0', lineHeight: 1.7 }}>
                   엑셀 파일을 업로드하거나 직접 입력하세요. 이름, 성별, 석차, 특이사항 등을 입력합니다.
                 </p>
+                <div style={{
+                  display: 'flex',
+                  gap: '0.75rem',
+                  flexWrap: 'wrap',
+                  marginTop: '0.75rem'
+                }}>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    background: 'rgba(99, 102, 241, 0.1)',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    color: '#a5b4fc'
+                  }}>
+                    <span>📁</span>
+                    <span style={{ fontWeight: 600 }}>엑셀파일 업로드</span>
+                  </div>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    background: 'rgba(99, 102, 241, 0.1)',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    color: '#a5b4fc'
+                  }}>
+                    <span>🖱️</span>
+                    <span style={{ fontWeight: 600 }}>드래그로 석차 지정</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -270,7 +310,7 @@ export default function Home() {
               gap: '2rem',
               padding: '2rem'
             }}>
-              <div style={{
+              <div className="step-icon-2" style={{
                 minWidth: '80px',
                 height: '80px',
                 background: 'linear-gradient(135deg, var(--success) 0%, #059669 100%)',
@@ -281,14 +321,35 @@ export default function Home() {
                 fontSize: '2rem',
                 fontWeight: 700,
                 color: 'white'
-              }}>2</div>
-              <div>
+              }}>⚙️</div>
+              <div style={{ flex: 1 }}>
                 <h3 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
                   ⚙️ 조건 설정
                 </h3>
-                <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.75rem 0', lineHeight: 1.7 }}>
                   분리해야 할 학생, 같은 반에 배정해야 할 학생을 지정합니다. 특수교육 대상 학생 인원 조정도 가능합니다.
                 </p>
+                <div style={{
+                  display: 'flex',
+                  gap: '0.75rem',
+                  flexWrap: 'wrap',
+                  marginTop: '0.75rem'
+                }}>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    color: '#6ee7b7'
+                  }}>
+                    <span>👀</span>
+                    <span style={{ fontWeight: 600 }}>한눈에 파악가능한 조건설정</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -299,7 +360,7 @@ export default function Home() {
               gap: '2rem',
               padding: '2rem'
             }}>
-              <div style={{
+              <div className="step-icon-3" style={{
                 minWidth: '80px',
                 height: '80px',
                 background: 'linear-gradient(135deg, var(--secondary) 0%, #be185d 100%)',
@@ -310,14 +371,49 @@ export default function Home() {
                 fontSize: '2rem',
                 fontWeight: 700,
                 color: 'white'
-              }}>3</div>
-              <div>
+              }}>🎯</div>
+              <div style={{ flex: 1 }}>
                 <h3 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
-                  🎯 자동 배정 & 결과 확인
+                  🎯 자동 배정 & 스마트 조정
                 </h3>
-                <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.75rem 0', lineHeight: 1.7 }}>
                   알고리즘이 최적의 배정 결과를 계산합니다. 결과를 확인하고 필요시 수동 조정 후 최종 저장합니다.
                 </p>
+                <div style={{
+                  display: 'flex',
+                  gap: '0.75rem',
+                  flexWrap: 'wrap',
+                  marginTop: '0.75rem'
+                }}>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    background: 'rgba(236, 72, 153, 0.1)',
+                    border: '1px solid rgba(236, 72, 153, 0.3)',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    color: '#f9a8d4'
+                  }}>
+                    <span>✨</span>
+                    <span style={{ fontWeight: 600 }}>쉬운 수정</span>
+                  </div>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    background: 'rgba(236, 72, 153, 0.1)',
+                    border: '1px solid rgba(236, 72, 153, 0.3)',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    color: '#f9a8d4'
+                  }}>
+                    <span>🤖</span>
+                    <span style={{ fontWeight: 600 }}>AI 학생 자동 추천</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -348,8 +444,8 @@ export default function Home() {
 
           <div className="card" style={{ padding: '2.5rem' }}>
             <p style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '2rem', lineHeight: 1.8 }}>
-              <strong>핵심:</strong> 1반 1등과 2반 1등은 서로 다른 반에 배정됩니다.<br />
-              같은 등수끼리 묶어서 순서를 바꿔가며 분산 배치합니다.
+              <strong>핵심:</strong> 각 반마다 다른 시작점에서 지그재그로 배정합니다.<br />
+              원래 같은 반 최상위권 학생들이 새로운 반에 골고루 흩어집니다.
             </p>
 
             <div style={{
@@ -359,17 +455,27 @@ export default function Home() {
               marginBottom: '1.5rem'
             }}>
               <div style={{ fontWeight: 600, marginBottom: '1rem', color: 'var(--text-primary)' }}>
-                🎯 배정 순서 예시:
+                🎯 배정 순서 예시 (기존 1반, 2반, 3반 → 새로운 A, B, C반 만들기):
               </div>
-              <div style={{ fontFamily: 'monospace', lineHeight: 2, color: 'var(--text-secondary)' }}>
-                <div>1등 그룹: 1반 1등→<span style={{ color: '#6366f1', fontWeight: 600 }}>A반</span>, 2반 1등→<span style={{ color: '#10b981', fontWeight: 600 }}>B반</span>, 3반 1등→<span style={{ color: '#ec4899', fontWeight: 600 }}>C반</span></div>
-                <div>2등 그룹: 1반 2등→<span style={{ color: '#ec4899', fontWeight: 600 }}>C반</span>, 2반 2등→<span style={{ color: '#10b981', fontWeight: 600 }}>B반</span>, 3반 2등→<span style={{ color: '#6366f1', fontWeight: 600 }}>A반</span> <span style={{ color: '#f59e0b' }}>(역순!)</span></div>
-                <div>3등 그룹: 1반 3등→<span style={{ color: '#6366f1', fontWeight: 600 }}>A반</span>, 2반 3등→<span style={{ color: '#10b981', fontWeight: 600 }}>B반</span>, 3반 3등→<span style={{ color: '#ec4899', fontWeight: 600 }}>C반</span> <span style={{ color: '#10b981' }}>(다시 정순!)</span></div>
+              <div style={{ fontFamily: 'monospace', lineHeight: 2.2, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <strong style={{ color: '#60a5fa' }}>1반:</strong> 1등→<span style={{ color: '#6366f1', fontWeight: 600 }}>A</span>, 2등→<span style={{ color: '#10b981', fontWeight: 600 }}>B</span>, 3등→<span style={{ color: '#ec4899', fontWeight: 600 }}>C</span> <span style={{ color: '#f59e0b' }}>(정순)</span>, 4등→<span style={{ color: '#ec4899', fontWeight: 600 }}>C</span>, 5등→<span style={{ color: '#10b981', fontWeight: 600 }}>B</span>, 6등→<span style={{ color: '#6366f1', fontWeight: 600 }}>A</span> <span style={{ color: '#f59e0b' }}>(역순!)</span>
+                </div>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <strong style={{ color: '#34d399' }}>2반:</strong> 1등→<span style={{ color: '#10b981', fontWeight: 600 }}>B</span>, 2등→<span style={{ color: '#ec4899', fontWeight: 600 }}>C</span>, 3등→<span style={{ color: '#6366f1', fontWeight: 600 }}>A</span> <span style={{ color: '#f59e0b' }}>(정순)</span>, 4등→<span style={{ color: '#6366f1', fontWeight: 600 }}>A</span>, 5등→<span style={{ color: '#ec4899', fontWeight: 600 }}>C</span>, 6등→<span style={{ color: '#10b981', fontWeight: 600 }}>B</span> <span style={{ color: '#f59e0b' }}>(역순!)</span>
+                </div>
+                <div>
+                  <strong style={{ color: '#f472b6' }}>3반:</strong> 1등→<span style={{ color: '#ec4899', fontWeight: 600 }}>C</span>, 2등→<span style={{ color: '#6366f1', fontWeight: 600 }}>A</span>, 3등→<span style={{ color: '#10b981', fontWeight: 600 }}>B</span> <span style={{ color: '#f59e0b' }}>(정순)</span>, 4등→<span style={{ color: '#10b981', fontWeight: 600 }}>B</span>, 5등→<span style={{ color: '#6366f1', fontWeight: 600 }}>A</span>, 6등→<span style={{ color: '#ec4899', fontWeight: 600 }}>C</span> <span style={{ color: '#f59e0b' }}>(역순!)</span>
+                </div>
               </div>
             </div>
 
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: 0 }}>
-              → 이렇게 하면 원래 같은 반 최상위권 학생들이 새로운 반에서 서로 흩어져 모든 반이 고르게 됩니다.
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: 0, lineHeight: 1.7 }}>
+              → <strong>결과:</strong><br />
+              &nbsp;&nbsp;• A반(1반1,6등 / 2반3,4등 / 3반2,5등) = 1+2+3+4+5+6등 골고루!<br />
+              &nbsp;&nbsp;• B반(1반2,5등 / 2반1,6등 / 3반3,4등) = 1+2+3+4+5+6등 골고루!<br />
+              &nbsp;&nbsp;• C반(1반3,4등 / 2반2,5등 / 3반1,6등) = 1+2+3+4+5+6등 골고루!<br />
+              → <strong style={{ color: '#10b981' }}>지그재그 패턴으로 상·중·하위권이 모든 반에 고르게 분산됩니다!</strong>
             </p>
           </div>
         </div>
@@ -419,7 +525,7 @@ export default function Home() {
         textAlign: 'center'
       }}>
         <p style={{ color: 'var(--text-muted)', margin: '0 0 0.5rem 0', fontSize: '0.9rem' }}>
-          © 2024 반배정 시스템. 선생님들의 공정한 반배정을 응원합니다. 💚
+          선생님들의 편안한 학교생활을 응원합니다. 💚
         </p>
         <p style={{
           color: 'var(--text-muted)',

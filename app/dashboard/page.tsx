@@ -29,8 +29,7 @@ export default function Dashboard() {
     const schoolId = localStorage.getItem('schoolId');
 
     if (!schoolId) {
-      alert('로그인이 필요합니다.');
-      router.push('/login');
+      router.push('/');
       return;
     }
 

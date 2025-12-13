@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
                     error: '마감된 학급은 수정할 수 없습니다. 마감 해제 후 다시 시도해주세요.'
                 }, { status: 403 });
             }
-        } catch (e) {
+        } catch (_e) {
             // section_statuses 파싱 실패 시 무시
         }
 
@@ -129,11 +129,11 @@ export async function DELETE(request: NextRequest) {
                         error: '마감된 학급은 삭제할 수 없습니다. 마감 해제 후 다시 시도해주세요.'
                     }, { status: 403 });
                 }
-            } catch (e) {
+            } catch (_e) {
                 // section_statuses 파싱 실패 시 무시
             }
 
-            const currentSectionCount = classData[0].section_count;
+            const _currentSectionCount = classData[0].section_count;
 
             // Delete all students in this section
             await sql`DELETE FROM students WHERE class_id = ${classIdInt} AND section_number = ${sectionInt}`;
@@ -158,7 +158,7 @@ export async function DELETE(request: NextRequest) {
             if (classInfo.length > 0 && classInfo[0].section_statuses) {
                 try {
                     const statuses = JSON.parse(classInfo[0].section_statuses);
-                    const newStatuses: any = {};
+                    const newStatuses: Record<string, string> = {};
 
                     // Reorganize status keys
                     Object.keys(statuses).forEach(key => {

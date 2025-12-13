@@ -4,8 +4,8 @@ import "./globals.css";
 import GlobalAlert from "@/components/GlobalAlert";
 
 export const metadata: Metadata = {
-  title: "학생 관리 시스템",
-  description: "Excel 붙여넣기 기능이 있는 학생 관리 시스템",
+  title: "반배정 프로그램",
+  description: "공정하고 편안한 반배정 시스템",
 };
 
 export default function RootLayout({

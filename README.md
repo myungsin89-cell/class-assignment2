@@ -1,6 +1,6 @@
-# 🎓 학생 관리 시스템 (Student Management System)
+# 🎓 반배정 프로그램 (Class Assignment System)
 
-Next.js와 Neon PostgreSQL을 사용한 학급 및 학생 관리 시스템입니다.
+Next.js와 Neon PostgreSQL을 사용한 공정하고 편안한 반배정 시스템입니다.
 
 ## ✨ 주요 기능
 
