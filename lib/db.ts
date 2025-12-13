@@ -49,6 +49,7 @@ export async function initDatabase() {
         group_name TEXT,
         rank INTEGER,
         previous_section INTEGER,
+        is_transferring_out BOOLEAN DEFAULT false,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
       );
@@ -56,6 +57,16 @@ export async function initDatabase() {
 
     await sql`
       CREATE INDEX IF NOT EXISTS idx_students_class_section ON students(class_id, section_number);
+    `;
+
+    // Migration: Add next_section column if it doesn't exist
+    await sql`
+      ALTER TABLE students ADD COLUMN IF NOT EXISTS next_section INTEGER;
+    `;
+
+    // Migration: Add section_names column to classes table
+    await sql`
+      ALTER TABLE classes ADD COLUMN IF NOT EXISTS section_names TEXT;
     `;
 
     console.log('Database initialized successfully');

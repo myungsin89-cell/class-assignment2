@@ -56,39 +56,100 @@ export default function Register() {
   };
 
   return (
-    <div className="container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="card fade-in" style={{ maxWidth: '500px', width: '100%' }}>
-        <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>학교 가입하기</h1>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '2rem',
+      background: 'linear-gradient(180deg, var(--bg-main) 0%, var(--bg-secondary) 100%)',
+      position: 'relative'
+    }}>
+      {/* Background decoration */}
+      <div style={{
+        position: 'absolute',
+        top: '15%',
+        right: '20%',
+        width: '300px',
+        height: '300px',
+        background: 'radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%)',
+        borderRadius: '50%',
+        filter: 'blur(60px)'
+      }} />
+      <div style={{
+        position: 'absolute',
+        bottom: '25%',
+        left: '15%',
+        width: '250px',
+        height: '250px',
+        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%)',
+        borderRadius: '50%',
+        filter: 'blur(60px)'
+      }} />
+
+      <div className="card fade-in" style={{
+        maxWidth: '450px',
+        width: '100%',
+        padding: '3rem 2.5rem',
+        position: 'relative',
+        zIndex: 1
+      }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <div style={{
+            fontSize: '3rem',
+            marginBottom: '1rem'
+          }}>🏫</div>
+          <h1 style={{
+            fontSize: '2rem',
+            marginBottom: '0.5rem',
+            background: 'linear-gradient(135deg, #10b981 0%, #6366f1 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}>학교 등록하기</h1>
+          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            무료로 학교를 등록하고 반배정을 시작하세요
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="schoolName" className="form-label">학교 이름</label>
+          <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+            <label htmlFor="schoolName" className="form-label" style={{ marginBottom: '0.75rem' }}>
+              📍 학교 이름
+            </label>
             <input
               id="schoolName"
               type="text"
               className="form-input"
               value={schoolName}
               onChange={(e) => setSchoolName(e.target.value)}
-              placeholder="학교 이름을 입력하세요"
+              placeholder="예: OO초등학교"
               required
+              style={{ padding: '1rem' }}
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">비밀번호</label>
+          <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+            <label htmlFor="password" className="form-label" style={{ marginBottom: '0.75rem' }}>
+              🔒 비밀번호
+            </label>
             <input
               id="password"
               type="password"
               className="form-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="비밀번호를 입력하세요"
+              placeholder="비밀번호를 입력하세요 (4자 이상)"
               required
+              style={{ padding: '1rem' }}
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword" className="form-label">비밀번호 확인</label>
+          <div className="form-group" style={{ marginBottom: '2rem' }}>
+            <label htmlFor="confirmPassword" className="form-label" style={{ marginBottom: '0.75rem' }}>
+              🔒 비밀번호 확인
+            </label>
             <input
               id="confirmPassword"
               type="password"
@@ -97,38 +158,78 @@ export default function Register() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="비밀번호를 다시 입력하세요"
               required
+              style={{ padding: '1rem' }}
             />
           </div>
 
           <button
             type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%', marginTop: '1rem' }}
+            className="btn btn-success"
+            style={{
+              width: '100%',
+              padding: '1rem',
+              fontSize: '1.1rem',
+              fontWeight: 600,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
             disabled={loading}
           >
             {loading ? (
               <>
                 <span className="loading"></span>
-                <span>처리 중...</span>
+                <span>등록 중...</span>
               </>
             ) : (
-              '가입하기'
+              '🚀 학교 등록하기'
             )}
+          </button>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            margin: '1.5rem 0'
+          }}>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>이미 등록하셨나요?</span>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => router.push('/login')}
+            className="btn btn-secondary"
+            style={{
+              width: '100%',
+              padding: '0.875rem',
+              marginBottom: '0.75rem',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}
+          >
+            로그인하기
           </button>
 
           <button
             type="button"
             onClick={() => router.push('/')}
             className="btn"
-            style={{ 
-              width: '100%', 
-              marginTop: '0.5rem',
-              background: '#fff',
-              color: '#666',
-              border: '1px solid #ddd'
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              background: 'transparent',
+              color: 'var(--text-muted)',
+              border: 'none',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center'
             }}
           >
-            취소
+            ← 메인으로 돌아가기
           </button>
         </form>
       </div>

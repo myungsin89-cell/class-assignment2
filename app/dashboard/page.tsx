@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { customConfirm } from '@/components/GlobalAlert';
 
 interface ClassData {
   id: number;
@@ -107,7 +108,8 @@ export default function Dashboard() {
       ? '이 학급과 반편성된 새로운반을 모두 삭제하시겠습니까?\n\n삭제 대상:\n- 기존반과 모든 학생 데이터\n- 반편성된 새로운반과 모든 학생 데이터\n\n이 작업은 되돌릴 수 없습니다.'
       : '이 학급을 삭제하시겠습니까?\n모든 학생 데이터도 함께 삭제됩니다.';
 
-    if (!confirm(confirmMessage)) {
+    const confirmed = await customConfirm(confirmMessage);
+    if (!confirmed) {
       return;
     }
 

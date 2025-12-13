@@ -31,6 +31,7 @@ export default function ClassSectionsPage() {
     const [classData, setClassData] = useState<ClassData | null>(null);
     const [sectionStatuses, setSectionStatuses] = useState<SectionStatus>({});
     const [loading, setLoading] = useState(true);
+    const [deleteModal, setDeleteModal] = useState<{ show: boolean; section: number | null }>({ show: false, section: null });
 
     useEffect(() => {
         loadClassData();
@@ -63,6 +64,33 @@ export default function ClassSectionsPage() {
 
     const getSectionStatus = (section: number): 'completed' | 'in_progress' => {
         return sectionStatuses[section.toString()] || 'in_progress';
+    };
+
+    const handleDeleteSection = (section: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setDeleteModal({ show: true, section });
+    };
+
+    const confirmDeleteSection = async () => {
+        if (!deleteModal.section || !classId) return;
+
+        try {
+            const response = await fetch(`/api/students?classId=${classId}&section=${deleteModal.section}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to delete students');
+            }
+
+            alert(`${deleteModal.section}반의 모든 학생 데이터가 삭제되었습니다.`);
+            setDeleteModal({ show: false, section: null });
+            loadClassData(); // Refresh
+        } catch (error) {
+            console.error('Error deleting students:', error);
+            alert(error instanceof Error ? error.message : '학생 데이터 삭제 중 오류가 발생했습니다.');
+        }
     };
 
     if (loading) {
@@ -102,7 +130,7 @@ export default function ClassSectionsPage() {
                         <h1 style={{ margin: 0 }}>{classData.grade}학년 반배정 대시보드</h1>
                     </div>
                     <button
-                        onClick={() => router.push('/')}
+                        onClick={() => router.push('/dashboard')}
                         className="btn btn-secondary"
                     >
                         🏠 홈으로
@@ -135,53 +163,44 @@ export default function ClassSectionsPage() {
 
                         <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem' }}>학생 정보 입력</h3>
 
-                        <div style={{ width: '100%', marginBottom: '1rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.25rem' }}>
-                                <span style={{ color: 'var(--text-secondary)' }}>진행률</span>
-                                <span style={{ fontWeight: 'bold', color: '#3b82f6' }}>
-                                    {Object.values(sectionStatuses).filter(s => s === 'completed').length} / {classData.section_count} 완료
-                                </span>
-                            </div>
-                            <div style={{ width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                        {/* 완료 시: 작성완료 버튼, 미완료 시: 진행률 바 */}
+                        {Object.values(sectionStatuses).filter(s => s === 'completed').length === classData.section_count ? (
+                            <div style={{ width: '100%', marginTop: 'auto' }}>
                                 <div style={{
-                                    width: `${(Object.values(sectionStatuses).filter(s => s === 'completed').length / classData.section_count) * 100}%`,
-                                    height: '100%',
-                                    background: '#3b82f6',
-                                    transition: 'width 0.5s ease'
-                                }}></div>
+                                    background: 'linear-gradient(135deg, #64748b, #475569)',
+                                    color: 'white',
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '6px',
+                                    textAlign: 'center',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.9rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    height: '36px'
+                                }}>
+                                    ✓ 작성 완료
+                                </div>
                             </div>
-                        </div>
-
-                        <button
-                            className="btn"
-                            disabled={Object.values(sectionStatuses).filter(s => s === 'completed').length < classData.section_count}
-                            onClick={() => {
-                                if (Object.values(sectionStatuses).filter(s => s === 'completed').length === classData.section_count) {
-                                    alert('모든 반의 입력이 완료되었습니다! 다음 단계[조건 설정]로 이동합니다. (준비중)');
-                                    // TODO: 다음 단계 라우팅 구현
-                                }
-                            }}
-                            style={{
-                                width: '100%',
-                                background: Object.values(sectionStatuses).filter(s => s === 'completed').length === classData.section_count
-                                    ? '#3b82f6'
-                                    : '#e2e8f0',
-                                color: Object.values(sectionStatuses).filter(s => s === 'completed').length === classData.section_count
-                                    ? 'white'
-                                    : '#94a3b8',
-                                border: 'none',
-                                padding: '0.5rem',
-                                fontSize: '0.9rem',
-                                fontWeight: 'bold',
-                                borderRadius: '6px',
-                                marginTop: 'auto',
-                                cursor: Object.values(sectionStatuses).filter(s => s === 'completed').length === classData.section_count
-                                    ? 'pointer'
-                                    : 'not-allowed'
-                            }}
-                        >
-                            {Object.values(sectionStatuses).filter(s => s === 'completed').length === classData.section_count ? '다음 단계로 이동 ▶' : '진행 중...'}
-                        </button>
+                        ) : (
+                            <div style={{ width: '100%', marginBottom: '0.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.25rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>진행률</span>
+                                    <span style={{ fontWeight: 'bold', color: '#3b82f6' }}>
+                                        {Object.values(sectionStatuses).filter(s => s === 'completed').length} / {classData.section_count} 완료
+                                    </span>
+                                </div>
+                                <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <div style={{
+                                        width: `${(Object.values(sectionStatuses).filter(s => s === 'completed').length / classData.section_count) * 100}%`,
+                                        height: '100%',
+                                        background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
+                                        transition: 'width 0.5s ease'
+                                    }}></div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* 2단계 */}
@@ -235,22 +254,31 @@ export default function ClassSectionsPage() {
                         <button
                             className="btn"
                             disabled={Object.values(sectionStatuses).filter(s => s === 'completed').length < classData.section_count}
-                            onClick={() => alert('조건 설정 페이지로 이동합니다. (준비중)')}
+                            onClick={() => router.push(`/conditions?classId=${classId}`)}
                             style={{
                                 width: '100%',
-                                background: Object.values(sectionStatuses).filter(s => s === 'completed').length === classData.section_count ? '#10b981' : 'transparent',
+                                background: Object.values(sectionStatuses).filter(s => s === 'completed').length === classData.section_count
+                                    ? 'linear-gradient(135deg, #10b981, #059669)'
+                                    : 'transparent',
                                 color: Object.values(sectionStatuses).filter(s => s === 'completed').length === classData.section_count ? 'white' : 'transparent',
                                 border: 'none',
-                                padding: '0.5rem',
+                                padding: '0.5rem 1rem',
                                 fontSize: '0.9rem',
                                 fontWeight: 'bold',
                                 borderRadius: '6px',
                                 marginTop: 'auto',
                                 cursor: Object.values(sectionStatuses).filter(s => s === 'completed').length === classData.section_count ? 'pointer' : 'default',
-                                height: '36px'
+                                height: '36px',
+                                boxShadow: Object.values(sectionStatuses).filter(s => s === 'completed').length === classData.section_count
+                                    ? '0 4px 12px rgba(16, 185, 129, 0.3)'
+                                    : 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.5rem'
                             }}
                         >
-                            {Object.values(sectionStatuses).filter(s => s === 'completed').length === classData.section_count ? '설정 시작하기' : ''}
+                            {Object.values(sectionStatuses).filter(s => s === 'completed').length === classData.section_count ? '설정하기 →' : ''}
                         </button>
                     </div>
 
@@ -310,9 +338,50 @@ export default function ClassSectionsPage() {
                                     background: isCompleted
                                         ? 'linear-gradient(145deg, rgba(16, 185, 129, 0.05) 0%, rgba(30, 41, 59, 0.6) 100%)'
                                         : 'rgba(30, 41, 59, 0.6)',
-                                    borderColor: isCompleted ? 'rgba(16, 185, 129, 0.3)' : 'var(--border)'
+                                    borderColor: isCompleted ? 'rgba(16, 185, 129, 0.3)' : 'var(--border)',
+                                    position: 'relative'
                                 }}
                             >
+                                {/* 삭제 버튼 */}
+                                <button
+                                    onClick={(e) => handleDeleteSection(section, e)}
+                                    style={{
+                                        position: 'absolute',
+                                        top: '8px',
+                                        right: '8px',
+                                        background: 'rgba(0, 0, 0, 0.3)',
+                                        color: 'rgba(255, 255, 255, 0.8)',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        width: '24px',
+                                        height: '24px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        fontWeight: 'normal',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'all 0.2s ease',
+                                        zIndex: 10,
+                                        opacity: 0.6
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(220, 53, 69, 0.9)';
+                                        e.currentTarget.style.color = 'white';
+                                        e.currentTarget.style.opacity = '1';
+                                        e.currentTarget.style.transform = 'scale(1.05)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'rgba(0, 0, 0, 0.3)';
+                                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+                                        e.currentTarget.style.opacity = '0.6';
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                    }}
+                                    title={`${section}반 학생 데이터 삭제`}
+                                >
+                                    ×
+                                </button>
+
                                 <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <div>
                                         <div style={{
@@ -364,6 +433,115 @@ export default function ClassSectionsPage() {
                     })}
                 </div>
             </div>
-        </div>
+
+            {/* 삭제 확인 모달 */}
+            {
+                deleteModal.show && (
+                    <div
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0,0,0,0.6)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 2000
+                        }}
+                        onClick={() => setDeleteModal({ show: false, section: null })}
+                    >
+                        <div
+                            className="card"
+                            style={{ maxWidth: '500px', width: '90%', margin: '1rem' }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                                <div style={{
+                                    width: '64px',
+                                    height: '64px',
+                                    background: 'linear-gradient(135deg, #ff6b6b, #dc3545)',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    margin: '0 auto 1rem',
+                                    boxShadow: '0 4px 16px rgba(220, 53, 69, 0.3)'
+                                }}>
+                                    <span style={{ fontSize: '32px', color: 'white' }}>⚠️</span>
+                                </div>
+                                <h2 style={{ marginBottom: '0.5rem', color: '#dc3545' }}>학급 데이터 삭제 확인</h2>
+                            </div>
+
+                            <div style={{
+                                background: '#fff5f5',
+                                border: '2px solid #ffc9c9',
+                                borderRadius: '8px',
+                                padding: '1rem',
+                                marginBottom: '1.5rem'
+                            }}>
+                                <p style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: '#dc3545' }}>
+                                    {deleteModal.section}반의 모든 학생 데이터를 삭제하시겠습니까?
+                                </p>
+                                <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>
+                                    다음 데이터가 영구적으로 삭제됩니다:
+                                </p>
+                                <ul style={{ marginLeft: '1.5rem', fontSize: '0.9rem', color: '#666' }}>
+                                    <li>학생 기본 정보 (이름, 연락처 등)</li>
+                                    <li>석차 및 특성 데이터</li>
+                                    <li>그룹 정보</li>
+                                </ul>
+                                <p style={{ fontWeight: 'bold', color: '#dc3545', marginTop: '0.75rem', fontSize: '0.9rem' }}>
+                                    ⚠️ 이 작업은 되돌릴 수 없습니다.
+                                </p>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                <button
+                                    onClick={() => setDeleteModal({ show: false, section: null })}
+                                    className="btn"
+                                    style={{
+                                        flex: 1,
+                                        background: '#fff',
+                                        color: '#666',
+                                        border: '2px solid #ddd',
+                                        padding: '0.75rem',
+                                        fontSize: '1rem',
+                                        fontWeight: 'bold'
+                                    }}
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    onClick={confirmDeleteSection}
+                                    className="btn"
+                                    style={{
+                                        flex: 1,
+                                        background: 'linear-gradient(135deg, #ff6b6b, #dc3545)',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '0.75rem',
+                                        fontSize: '1rem',
+                                        fontWeight: 'bold',
+                                        boxShadow: '0 4px 12px rgba(220, 53, 69, 0.3)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(220, 53, 69, 0.4)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(220, 53, 69, 0.3)';
+                                    }}
+                                >
+                                    삭제하기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 }

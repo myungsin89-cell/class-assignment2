@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import RankModal from './RankModal';
 import SeparationModal from './SeparationModal';
+import * as XLSX from 'xlsx';
+import { customConfirm } from '@/components/GlobalAlert';
 
 interface Student {
     id?: number;
@@ -15,6 +17,7 @@ interface Student {
     is_problem_student: boolean;
     is_special_class: boolean;
     is_underachiever: boolean;
+    is_transferring_out: boolean;
     group_name: string;
     rank: number | null;
     previous_section?: number | null;
@@ -28,7 +31,33 @@ interface ClassData {
     is_distributed?: number;
     parent_class_id?: number;
     child_class_id?: number;
+    new_section_count?: number;  // 분반 개수 (조건설정에서 설정한 값)
 }
+
+const getGroupColorClass = (groupName: string) => {
+    if (!groupName) return '';
+    const match = groupName.match(/그룹(\d+)/);
+    if (match) {
+        const num = parseInt(match[1]);
+        const colorIndex = ((num - 1) % 10) + 1;
+        return `group-color-${colorIndex}`;
+    }
+    return '';
+};
+
+// SEP: 접두사를 제거하고 표시용 그룹명 반환
+const getDisplayGroupName = (groupName: string) => {
+    if (!groupName) return '';
+    // SEP:N반-그룹명 형식에서 그룹명만 추출
+    if (groupName.startsWith('SEP:')) {
+        const parts = groupName.replace('SEP:', '').split('-');
+        if (parts.length >= 2) {
+            return parts.slice(1).join('-'); // N반 부분 제외하고 그룹명만
+        }
+        return parts[0]; // 그룹명만 있는 경우
+    }
+    return groupName;
+};
 
 export default function StudentsPage() {
     const searchParams = useSearchParams();
@@ -50,16 +79,17 @@ export default function StudentsPage() {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmAction, setConfirmAction] = useState<'complete' | 'unmark'>('complete');
+    const [showTempSaveModal, setShowTempSaveModal] = useState(false);
+
+    // localStorage 키 생성
+    const getTempSaveKey = () => `temp_students_${classId}_${currentSection}`;
 
     useEffect(() => {
         if (!classId) return;
         loadClassData();
     }, [classId]);
 
-    useEffect(() => {
-        if (!classId || !currentSection) return;
-        loadStudents();
-    }, [classId, currentSection]);
+
 
     // 섹션 변경 시 상태 재확인 (classData가 이미 로드된 경우)
     useEffect(() => {
@@ -86,6 +116,11 @@ export default function StudentsPage() {
             }
 
             setClassData(data);
+
+            // 조건설정에서 저장한 new_section_count가 있으면 분배 개수 초기화
+            if (data.new_section_count && data.new_section_count >= 2) {
+                setNewSectionCount(data.new_section_count);
+            }
 
             // 현재 클래스가 child class인 경우 (반편성된 클래스)
             if (data.parent_class_id) {
@@ -137,6 +172,8 @@ export default function StudentsPage() {
         }
     };
 
+
+
     const loadStudents = async () => {
         try {
             const response = await fetch(`/api/students?classId=${classId}&section=${currentSection}`);
@@ -152,6 +189,7 @@ export default function StudentsPage() {
                     is_problem_student: Boolean(s.is_problem_student),
                     is_special_class: Boolean(s.is_special_class),
                     is_underachiever: Boolean(s.is_underachiever),
+                    is_transferring_out: Boolean(s.is_transferring_out),
                     group_name: s.group_name || '',
                     rank: s.rank || null,
                     previous_section: s.previous_section || null,
@@ -165,15 +203,52 @@ export default function StudentsPage() {
         }
     };
 
+    // 임시 저장 데이터 확인 및 로드
+    const loadTempData = async () => {
+        const key = getTempSaveKey();
+        const savedData = localStorage.getItem(key);
+
+        if (savedData) {
+            try {
+                const parsedData = JSON.parse(savedData);
+                // 데이터 유효성 간단 확인
+                if (Array.isArray(parsedData) && parsedData.length > 0) {
+                    const confirmed = await customConfirm(
+                        '작성 중인 임시 저장 데이터가 있습니다.\n불러오시겠습니까?'
+                    );
+                    if (confirmed) {
+                        setStudents(parsedData);
+                        console.log('임시 저장 데이터 로드 완료');
+                    }
+                }
+            } catch (e) {
+                console.error('임시 저장 데이터 파싱 오류:', e);
+            }
+        }
+    };
+
+
+
+    // 데이터 로드: 서버 데이터 로드 후 임시 저장 데이터 확인
+    useEffect(() => {
+        if (!classId || !currentSection) return;
+        const init = async () => {
+            await loadStudents();
+            await loadTempData();
+        };
+        init();
+    }, [classId, currentSection]);
+
     const createEmptyStudent = (): Student => ({
         name: '',
         gender: 'M',
         birth_date: '',
         contact: '',
         notes: '',
-        is_problem_student: false, // 기본값 false
-        is_special_class: false, // 기본값 false
-        is_underachiever: false, // 기본값 false
+        is_problem_student: false,
+        is_special_class: false,
+        is_underachiever: false,
+        is_transferring_out: false,
         group_name: '',
         rank: null,
         previous_section: null,
@@ -181,6 +256,7 @@ export default function StudentsPage() {
 
     const handlePaste = (e: React.ClipboardEvent) => {
         e.preventDefault();
+        if (isCompleted) return;
         setIsPasting(true);
 
         const pastedData = e.clipboardData.getData('text');
@@ -215,9 +291,10 @@ export default function StudentsPage() {
                 birth_date,
                 notes,
                 contact,
-                is_problem_student: false, // 기본값 false
-                is_special_class: false, // 기본값 false
-                is_underachiever: false, // 기본값 false
+                is_problem_student: false,
+                is_special_class: false,
+                is_underachiever: false,
+                is_transferring_out: false,
                 group_name: '',
                 rank: null,
             };
@@ -229,27 +306,140 @@ export default function StudentsPage() {
     };
 
     const downloadTemplate = () => {
-        const template = '이름\t성별\t문제아\t특수반\t그룹\t등수\n홍길동\t남\tfalse\tfalse\tA조\t1\n김영희\t여\tfalse\ttrue\tB조\t2\n이철수\t남\ttrue\tfalse\tA조\t3';
-        const blob = new Blob([template], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${classData?.grade}학년_${currentSection}반_명렬표_템플릿.txt`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        // Excel 워크북 생성
+        const wb = XLSX.utils.book_new();
+
+        // 헤더와 예시 데이터
+        const ws_data = [
+            ['번호', '이름', '성별', '생년월일', '특이사항', '보호자 연락처'],
+            [1, '홍길동', '남', '090101', '반장', '010-1234-5678'],
+            [2, '김영희', '여', '090202', '', '010-2345-6789'],
+            [3, '이철수', '남', '090303', '학급부회장', '010-3456-7890']
+        ];
+
+        // 워크시트 생성
+        const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+        // 열 너비 설정
+        ws['!cols'] = [
+            { wch: 8 },  // 번호
+            { wch: 12 }, // 이름
+            { wch: 8 },  // 성별
+            { wch: 12 }, // 생년월일
+            { wch: 20 }, // 특이사항
+            { wch: 15 }  // 보호자 연락처
+        ];
+
+        // 워크북에 워크시트 추가
+        XLSX.utils.book_append_sheet(wb, ws, '학생명단');
+
+        // 파일 다운로드
+        XLSX.writeFile(wb, `${classData?.grade}학년_${currentSection}반_명렬표_템플릿.xlsx`);
     };
 
     const addRow = () => {
         setStudents([...students, createEmptyStudent()]);
     };
 
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || isCompleted) return;
+
+        // 파일 확장자 검증
+        if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+            alert('Excel 파일(.xlsx 또는 .xls)만 업로드 가능합니다.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = new Uint8Array(event.target?.result as ArrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const jsonData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                if (jsonData.length < 2) {
+                    alert('파일에 데이터가 없습니다.');
+                    return;
+                }
+
+                // 첫 번째 행은 헤더이므로 제외
+                const dataRows = jsonData.slice(1);
+
+                const newStudents: Student[] = dataRows
+                    .filter(row => row && row.length > 0 && row[1]) // 이름이 있는 행만
+                    .map(row => {
+                        // 0: 번호 (무시)
+                        // 1: 이름
+                        // 2: 성별
+                        // 3: 생년월일
+                        // 4: 특이사항
+                        // 5: 보호자 연락처
+
+                        const name = String(row[1] || '').trim();
+                        const genderValue = String(row[2] || '').trim().toLowerCase();
+                        let gender: 'M' | 'F' = 'M';
+
+                        // 여성 인식: 여, 여자, 여성, f, female
+                        if (genderValue === '여' ||
+                            genderValue === '여자' ||
+                            genderValue === '여성' ||
+                            genderValue === 'f' ||
+                            genderValue === 'female') {
+                            gender = 'F';
+                        }
+                        // 남성은 기본값이지만 명시적으로 확인 가능
+                        // 남, 남자, 남성, m, male
+
+                        const birth_date = String(row[3] || '').trim();
+                        const notes = String(row[4] || '').trim();
+                        const contact = String(row[5] || '').trim();
+
+                        return {
+                            name,
+                            gender,
+                            birth_date,
+                            notes,
+                            contact,
+                            is_problem_student: false,
+                            is_special_class: false,
+                            is_underachiever: false,
+                            is_transferring_out: false,
+                            group_name: '',
+                            rank: null,
+                        };
+                    });
+
+                if (newStudents.length === 0) {
+                    alert('유효한 학생 데이터가 없습니다.');
+                    return;
+                }
+
+                setStudents(newStudents);
+                setIsPasting(true);
+                setTimeout(() => setIsPasting(false), 1000);
+                alert(`${newStudents.length}명의 학생 데이터를 불러왔습니다!`);
+
+                // 파일 input 초기화
+                e.target.value = '';
+            } catch (error) {
+                console.error('파일 읽기 오류:', error);
+                alert('파일을 읽는 중 오류가 발생했습니다. 파일 형식을 확인해주세요.');
+            }
+        };
+
+        reader.readAsArrayBuffer(file);
+    };
+
     const removeRow = (index: number) => {
+        if (isCompleted) return;
         setStudents(students.filter((_, i) => i !== index));
     };
 
     const updateStudent = (index: number, field: keyof Student, value: any) => {
+        if (isCompleted) return;
         const updated = [...students];
         updated[index] = { ...updated[index], [field]: value };
         setStudents(updated);
@@ -259,6 +449,10 @@ export default function StudentsPage() {
     const handleFieldPaste = (e: React.ClipboardEvent<HTMLInputElement | HTMLSelectElement>, startIndex: number, field: keyof Student) => {
         e.preventDefault();
         e.stopPropagation(); // 부모의 handlePaste 실행 방지
+
+        // 마감된 경우 붙여넣기 차단
+        if (isCompleted) return;
+
         const pastedData = e.clipboardData.getData('text');
         const rows = pastedData.split('\n').filter(v => v.trim());
 
@@ -384,6 +578,17 @@ export default function StudentsPage() {
         }
     };
 
+    const handleTempSave = () => {
+        try {
+            const key = getTempSaveKey();
+            localStorage.setItem(key, JSON.stringify(students));
+            setShowTempSaveModal(true);
+        } catch (e) {
+            console.error('임시 저장 실패:', e);
+            alert('임시 저장 중 오류가 발생했습니다.');
+        }
+    };
+
     const navigateToSection = (section: number) => {
         router.push(`/students?classId=${classId}&section=${section}`);
     };
@@ -401,7 +606,7 @@ export default function StudentsPage() {
             return;
         }
 
-        const confirmed = confirm(`현재 학급의 모든 학생을 ${newSectionCount}개 반으로 편성하시겠습니까?`);
+        const confirmed = await customConfirm(`현재 학급의 모든 학생을 ${newSectionCount}개 반으로 편성하시겠습니까?`);
         if (!confirmed) return;
 
         setLoading(true);
@@ -444,7 +649,7 @@ export default function StudentsPage() {
             return;
         }
 
-        const confirmed = confirm(
+        const confirmed = await customConfirm(
             `새로운반 전체를 삭제하시겠습니까?\n\n` +
             `삭제 대상:\n` +
             `- ${classData?.grade}학년 새로운반 (${childClassData.section_count}개 반: 1반~${childClassData.section_count}반)\n` +
@@ -519,6 +724,30 @@ export default function StudentsPage() {
                     </button>
                 </div>
 
+                {/* 마감 배너 (Option C) */}
+                {isCompleted && (
+                    <div style={{
+                        background: 'rgba(255, 99, 71, 0.1)',
+                        border: '1px solid #ff6347',
+                        borderRadius: '8px',
+                        padding: '1rem',
+                        marginBottom: '2rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <span style={{ fontSize: '1.5rem' }}>⚠️</span>
+                            <div>
+                                <h3 style={{ margin: '0 0 0.25rem 0', color: '#d32f2f', fontSize: '1rem' }}>이 학급은 마감되었습니다.</h3>
+                                <p style={{ margin: 0, color: '#d32f2f', fontSize: '0.9rem' }}>
+                                    수정이 필요하시면 우측의 <b>[🔒 마감 해제]</b> 버튼을 클릭해주세요.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
 
 
                 {/* 툴바 */}
@@ -539,15 +768,48 @@ export default function StudentsPage() {
                         >
                             📥 예시자료
                         </button>
+
+                        {/* 파일 업로드 버튼 */}
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type="file"
+                                accept=".xlsx,.xls"
+                                onChange={handleFileUpload}
+                                style={{ display: 'none' }}
+                                id="excel-upload"
+                                disabled={isCompleted}
+                            />
+                            <label
+                                htmlFor="excel-upload"
+                                className="btn btn-secondary"
+                                style={{
+                                    fontSize: '0.9rem',
+                                    padding: '0.5rem 1rem',
+                                    cursor: isCompleted ? 'not-allowed' : 'pointer',
+                                    margin: 0,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    opacity: isCompleted ? 0.6 : 1
+                                }}
+                                title="엑셀 파일 업로드"
+                            >
+                                📂 파일 업로드
+                            </label>
+                        </div>
+
                         <div style={{ position: 'relative' }}>
                             <button
                                 className="btn btn-secondary"
                                 onClick={() => setIsPasting(!isPasting)}
+                                disabled={isCompleted}
                                 style={{
                                     fontSize: '0.9rem',
                                     padding: '0.5rem 1rem',
                                     background: isPasting ? 'var(--primary-light)' : undefined,
-                                    color: isPasting ? 'white' : undefined
+                                    color: isPasting ? 'white' : undefined,
+                                    opacity: isCompleted ? 0.6 : 1,
+                                    cursor: isCompleted ? 'not-allowed' : 'pointer'
                                 }}
                                 title="엑셀 데이터 붙여넣기"
                             >
@@ -581,12 +843,15 @@ export default function StudentsPage() {
                         <button
                             className="btn"
                             onClick={() => setShowRankModal(true)}
+                            disabled={isCompleted}
                             style={{
                                 background: 'white',
                                 border: '1px solid var(--primary)',
                                 color: 'var(--primary)',
                                 fontSize: '0.9rem',
-                                padding: '0.5rem 1rem'
+                                padding: '0.5rem 1rem',
+                                opacity: isCompleted ? 0.6 : 1,
+                                cursor: isCompleted ? 'not-allowed' : 'pointer'
                             }}
                         >
                             📊 석차 지정
@@ -595,12 +860,15 @@ export default function StudentsPage() {
                         <button
                             className="btn"
                             onClick={() => setShowSeparationModal(true)}
+                            disabled={isCompleted}
                             style={{
                                 background: 'white',
                                 border: '1px solid var(--secondary)',
                                 color: 'var(--secondary)',
                                 fontSize: '0.9rem',
-                                padding: '0.5rem 1rem'
+                                padding: '0.5rem 1rem',
+                                opacity: isCompleted ? 0.6 : 1,
+                                cursor: isCompleted ? 'not-allowed' : 'pointer'
                             }}
                         >
                             🔗 반 내부 분리
@@ -624,30 +892,63 @@ export default function StudentsPage() {
                     </div>
                 )}
 
-                <div className="table-container" onPaste={handlePaste}>
+                <div className="table-container" onPaste={handlePaste} style={{ position: 'relative' }}>
+                    {/* 마감 시 테이블 오버레이 */}
+                    {isCompleted && (
+                        <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0, 0, 0, 0.05)',
+                            zIndex: 5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'not-allowed',
+                            borderRadius: '8px'
+                        }}>
+                            <div style={{
+                                background: 'rgba(255, 255, 255, 0.95)',
+                                padding: '1rem 2rem',
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                fontWeight: 'bold',
+                                color: '#d32f2f'
+                            }}>
+                                <span style={{ fontSize: '1.2rem' }}>🔒</span>
+                                마감된 학급입니다. 수정하려면 마감 해제를 해주세요.
+                            </div>
+                        </div>
+                    )}
                     <table>
                         <thead>
                             <tr>
-                                <th style={{ width: '50px', textAlign: 'center' }}>#</th>
+                                <th style={{ width: '40px', textAlign: 'center', whiteSpace: 'nowrap' }}>번호</th>
                                 {!!classData?.is_distributed && (
-                                    <th style={{ width: '60px', textAlign: 'center' }}>이전반</th>
+                                    <th style={{ width: '50px', textAlign: 'center', whiteSpace: 'nowrap' }}>이전반</th>
                                 )}
-                                <th style={{ width: '100px' }}>성명</th>
-                                <th style={{ width: '80px', textAlign: 'center' }}>성별</th>
-                                <th style={{ width: '100px' }}>생년월일</th>
-                                <th style={{ width: '150px' }}>특이사항</th>
-                                <th style={{ width: '120px' }}>연락처</th>
-                                <th style={{ width: '60px', textAlign: 'center', borderLeft: '2px solid var(--border)' }}>석차</th>
-                                <th style={{ width: '80px', textAlign: 'center' }}>문제행동</th>
-                                <th style={{ width: '80px', textAlign: 'center' }}>특수교육</th>
-                                <th style={{ width: '80px', textAlign: 'center' }}>부진아</th>
-                                <th style={{ width: '100px' }}>그룹</th>
-                                <th style={{ width: '50px', textAlign: 'center' }}>삭제</th>
+                                <th style={{ width: '75px', textAlign: 'center', whiteSpace: 'nowrap' }}>성명</th>
+                                <th style={{ width: '45px', textAlign: 'center', whiteSpace: 'nowrap' }}>성별</th>
+                                <th style={{ width: '80px', textAlign: 'center', whiteSpace: 'nowrap' }}>생년월일</th>
+                                <th style={{ width: '180px', textAlign: 'center', whiteSpace: 'nowrap' }}>특이사항</th>
+                                <th style={{ width: '130px', textAlign: 'center', whiteSpace: 'nowrap' }}>연락처</th>
+                                <th style={{ width: '50px', textAlign: 'center', borderLeft: '2px solid var(--border)', whiteSpace: 'nowrap' }}>석차</th>
+                                <th style={{ width: '50px', textAlign: 'center', whiteSpace: 'nowrap' }}>문제행동</th>
+                                <th style={{ width: '50px', textAlign: 'center', whiteSpace: 'nowrap' }}>특수교육</th>
+                                <th style={{ width: '50px', textAlign: 'center', whiteSpace: 'nowrap' }}>학습부진</th>
+                                <th style={{ width: '40px', textAlign: 'center', whiteSpace: 'nowrap' }}>전출</th>
+                                <th style={{ width: '50px', textAlign: 'center', whiteSpace: 'nowrap' }}>분리</th>
+                                <th style={{ width: '30px', textAlign: 'center' }}></th>
                             </tr>
                         </thead>
                         <tbody>
                             {students.map((student, index) => (
-                                <tr key={index}>
+                                <tr key={index} className="student-row" style={{ position: 'relative' }}>
                                     <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{index + 1}</td>
                                     {!!classData?.is_distributed && (
                                         <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
@@ -661,6 +962,7 @@ export default function StudentsPage() {
                                             value={student.name}
                                             onChange={(e) => updateStudent(index, 'name', e.target.value)}
                                             onPaste={(e) => handleFieldPaste(e, index, 'name')}
+                                            disabled={isCompleted}
                                             placeholder="이름"
                                             style={{ margin: 0, padding: '0.25rem', border: 'none', background: 'transparent' }}
                                             onFocus={(e) => e.target.style.borderBottom = '1px solid var(--primary)'}
@@ -670,8 +972,13 @@ export default function StudentsPage() {
                                     <td style={{ textAlign: 'center' }}>
                                         <div
                                             className={`badge ${student.gender === 'M' ? 'badge-male' : 'badge-female'}`}
-                                            style={{ cursor: 'pointer', margin: '0 auto', width: 'fit-content' }}
-                                            onClick={() => updateStudent(index, 'gender', student.gender === 'M' ? 'F' : 'M')}
+                                            style={{
+                                                cursor: isCompleted ? 'not-allowed' : 'pointer',
+                                                margin: '0 auto',
+                                                width: 'fit-content',
+                                                opacity: isCompleted ? 0.7 : 1
+                                            }}
+                                            onClick={() => !isCompleted && updateStudent(index, 'gender', student.gender === 'M' ? 'F' : 'M')}
                                         >
                                             {student.gender === 'M' ? '남' : '여'}
                                         </div>
@@ -683,6 +990,7 @@ export default function StudentsPage() {
                                             value={student.birth_date || ''}
                                             onChange={(e) => updateStudent(index, 'birth_date', e.target.value)}
                                             placeholder="YYMMDD"
+                                            disabled={isCompleted}
                                             style={{ margin: 0, padding: '0.25rem', border: 'none', background: 'transparent', fontSize: '0.9rem' }}
                                         />
                                     </td>
@@ -693,7 +1001,19 @@ export default function StudentsPage() {
                                             value={student.notes || ''}
                                             onChange={(e) => updateStudent(index, 'notes', e.target.value)}
                                             placeholder="-"
-                                            style={{ margin: 0, padding: '0.25rem', border: 'none', background: 'transparent', fontSize: '0.9rem' }}
+                                            disabled={isCompleted}
+                                            title={student.notes || ''}
+                                            style={{
+                                                margin: 0,
+                                                padding: '0.25rem',
+                                                border: 'none',
+                                                background: 'transparent',
+                                                fontSize: '0.9rem',
+                                                width: '100%',
+                                                textOverflow: 'ellipsis',
+                                                overflow: 'hidden',
+                                                whiteSpace: 'nowrap'
+                                            }}
                                         />
                                     </td>
                                     <td>
@@ -703,6 +1023,7 @@ export default function StudentsPage() {
                                             value={student.contact || ''}
                                             onChange={(e) => updateStudent(index, 'contact', e.target.value)}
                                             placeholder="-"
+                                            disabled={isCompleted}
                                             style={{ margin: 0, padding: '0.25rem', border: 'none', background: 'transparent', fontSize: '0.9rem' }}
                                         />
                                     </td>
@@ -719,6 +1040,7 @@ export default function StudentsPage() {
                                                 updateStudent(index, 'rank', isNaN(val) ? null : val);
                                             }}
                                             placeholder="-"
+                                            disabled={isCompleted}
                                             style={{ margin: 0, textAlign: 'center', background: 'transparent', border: 'none' }}
                                         />
                                     </td>
@@ -727,7 +1049,8 @@ export default function StudentsPage() {
                                             type="checkbox"
                                             checked={student.is_problem_student}
                                             onChange={(e) => updateStudent(index, 'is_problem_student', e.target.checked)}
-                                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                            disabled={isCompleted}
+                                            style={{ width: '18px', height: '18px', cursor: isCompleted ? 'not-allowed' : 'pointer' }}
                                         />
                                     </td>
                                     <td style={{ textAlign: 'center' }}>
@@ -735,7 +1058,8 @@ export default function StudentsPage() {
                                             type="checkbox"
                                             checked={student.is_special_class}
                                             onChange={(e) => updateStudent(index, 'is_special_class', e.target.checked)}
-                                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                            disabled={isCompleted}
+                                            style={{ width: '18px', height: '18px', cursor: isCompleted ? 'not-allowed' : 'pointer' }}
                                         />
                                     </td>
                                     <td style={{ textAlign: 'center' }}>
@@ -743,24 +1067,53 @@ export default function StudentsPage() {
                                             type="checkbox"
                                             checked={student.is_underachiever}
                                             onChange={(e) => updateStudent(index, 'is_underachiever', e.target.checked)}
-                                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                            disabled={isCompleted}
+                                            style={{ width: '18px', height: '18px', cursor: isCompleted ? 'not-allowed' : 'pointer' }}
                                         />
                                     </td>
-                                    <td>
-                                        <select
-                                            className="form-select"
-                                            value={student.group_name}
-                                            onChange={(e) => updateStudent(index, 'group_name', e.target.value)}
-                                            style={{ margin: 0, padding: '0.25rem', fontSize: '0.85rem', height: 'auto' }}
-                                        >
-                                            <option value="">-</option>
-                                            {[...Array(10)].map((_, i) => (
-                                                <option key={i} value={`그룹${i + 1}`}>그룹{i + 1}</option>
-                                            ))}
-                                        </select>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={student.is_transferring_out}
+                                            onChange={(e) => updateStudent(index, 'is_transferring_out', e.target.checked)}
+                                            disabled={isCompleted}
+                                            style={{ width: '18px', height: '18px', cursor: isCompleted ? 'not-allowed' : 'pointer' }}
+                                        />
                                     </td>
                                     <td style={{ textAlign: 'center' }}>
-                                        <button className="btn" onClick={() => removeRow(index)} style={{ padding: '0.25rem', color: 'var(--text-muted)' }}>×</button>
+                                        {/* 분리 그룹 배지로만 표시 (읽기 전용) */}
+                                        {student.group_name ? (
+                                            <span
+                                                className={`badge-group ${getGroupColorClass(getDisplayGroupName(student.group_name))}`}
+                                                style={{
+                                                    fontSize: '0.75rem',
+                                                    padding: '0.15rem 0.4rem',
+                                                    display: 'inline-block'
+                                                }}
+                                                title={`분리 그룹: ${getDisplayGroupName(student.group_name)}`}
+                                            >
+                                                {getDisplayGroupName(student.group_name)}
+                                            </span>
+                                        ) : (
+                                            <span style={{ color: 'var(--text-muted)' }}>-</span>
+                                        )}
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <button
+                                            className="btn"
+                                            onClick={() => removeRow(index)}
+                                            disabled={isCompleted}
+                                            style={{
+                                                padding: '0.2rem 0.5rem',
+                                                color: isCompleted ? 'var(--text-disabled)' : 'var(--text-muted)',
+                                                cursor: isCompleted ? 'not-allowed' : 'pointer',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                fontSize: '1.1rem',
+                                                lineHeight: 1
+                                            }}
+                                            title="학생 삭제"
+                                        >×</button>
                                     </td>
                                 </tr>
                             ))}
@@ -771,9 +1124,24 @@ export default function StudentsPage() {
                 {/* 버튼 액션 바 */}
                 {/* 버튼 액션 바 */}
                 <div className="action-bar" style={{ justifyContent: 'space-between', marginTop: '1rem' }}>
-                    <div className="action-group">
-                        <button className="btn btn-secondary" onClick={addRow}>
+                    <div className="action-group" style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn btn-secondary" onClick={addRow} disabled={isCompleted}>
                             + 학생 추가
+                        </button>
+                        <button
+                            className="btn"
+                            onClick={handleTempSave}
+                            disabled={isCompleted}
+                            style={{
+                                background: 'white',
+                                border: '1px solid #cbd5e1',
+                                color: '#475569',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                            }}
+                        >
+                            💾 임시저장
                         </button>
                     </div>
 
@@ -834,7 +1202,7 @@ export default function StudentsPage() {
                                 transition: 'all 0.3s'
                             }}
                         >
-                            {isCompleted ? '🔓 마감 해지' : '✅ 명렬표 마감'}
+                            {isCompleted ? '🔒 마감 해제' : '✓ 마감 (최종 저장)'}
                         </button>
                     </div>
                 </div>
@@ -862,7 +1230,7 @@ export default function StudentsPage() {
                             maxWidth: '500px',
                             width: '90%'
                         }}>
-                            <h2 style={{ marginTop: 0, color: '#667eea' }}>🔀 반편성</h2>
+                            <h2 style={{ marginTop: 0, color: '#667eea', textAlign: 'center' }}>🔀 반편성</h2>
                             <p style={{ color: '#666', marginBottom: '1.5rem' }}>
                                 현재 학급의 모든 학생을 새로운 반으로 편성합니다.<br />
                                 등수, 성별, 그룹, 문제아, 특수반을 고려하여 균등하게 배치됩니다.
@@ -915,9 +1283,32 @@ export default function StudentsPage() {
                     <RankModal
                         students={students}
                         onClose={() => setShowRankModal(false)}
-                        onSave={(updatedStudents) => {
+                        onSave={async (updatedStudents) => {
                             setStudents(updatedStudents);
                             setShowRankModal(false);
+
+                            // 자동 저장
+                            setLoading(true);
+                            try {
+                                const validStudents = updatedStudents.filter(s => s.name.trim());
+                                if (validStudents.length > 0) {
+                                    await fetch('/api/students', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            classId,
+                                            section: currentSection,
+                                            students: validStudents,
+                                        }),
+                                    });
+                                    console.log('석차 정보가 자동 저장되었습니다.');
+                                }
+                            } catch (error) {
+                                console.error('자동 저장 실패:', error);
+                                alert('석차 정보 저장 중 오류가 발생했습니다.');
+                            } finally {
+                                setLoading(false);
+                            }
                         }}
                     />
                 )
@@ -928,10 +1319,34 @@ export default function StudentsPage() {
                 showSeparationModal && (
                     <SeparationModal
                         students={students}
+                        currentSection={currentSection}
                         onClose={() => setShowSeparationModal(false)}
-                        onSave={(updatedStudents) => {
+                        onSave={async (updatedStudents) => {
                             setStudents(updatedStudents);
                             setShowSeparationModal(false);
+
+                            // 자동 저장
+                            setLoading(true);
+                            try {
+                                const validStudents = updatedStudents.filter(s => s.name.trim());
+                                if (validStudents.length > 0) {
+                                    await fetch('/api/students', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            classId,
+                                            section: currentSection,
+                                            students: validStudents,
+                                        }),
+                                    });
+                                    console.log('분리 그룹 정보가 자동 저장되었습니다.');
+                                }
+                            } catch (error) {
+                                console.error('자동 저장 실패:', error);
+                                alert('분리 그룹 정보 저장 중 오류가 발생했습니다.');
+                            } finally {
+                                setLoading(false);
+                            }
                         }}
                     />
                 )
@@ -959,7 +1374,7 @@ export default function StudentsPage() {
                         textAlign: 'center',
                         boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
                     }}>
-                        <h3 style={{ marginTop: 0 }}>
+                        <h3 style={{ marginTop: 0, color: 'black' }}>
                             {confirmAction === 'complete' ? '명렬표 마감' : '마감 해지'}
                         </h3>
                         <p style={{ color: '#666', marginBottom: '2rem' }}>
@@ -1003,6 +1418,8 @@ export default function StudentsPage() {
                                             if (response.ok) {
                                                 alert('✅ 완료되었습니다!');
                                                 setIsCompleted(true);
+                                                // 임시 저장 데이터 삭제
+                                                localStorage.removeItem(getTempSaveKey());
                                                 router.refresh();
                                                 await loadClassData();
                                             } else {
@@ -1031,7 +1448,7 @@ export default function StudentsPage() {
                                     }
                                 }}
                                 style={{
-                                    background: confirmAction === 'complete' ? 'var(--success)' : 'var(--text-secondary)',
+                                    background: confirmAction === 'complete' ? 'var(--success)' : 'var(--danger)',
                                     color: 'white'
                                 }}
                             >
@@ -1039,6 +1456,84 @@ export default function StudentsPage() {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* 임시 저장 안내 모달 */}
+            {showTempSaveModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 2000
+                }}>
+                    <div style={{
+                        background: 'white',
+                        padding: '2rem',
+                        borderRadius: '12px',
+                        maxWidth: '400px',
+                        width: '90%',
+                        textAlign: 'center',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+                    }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💾</div>
+                        <h3 style={{ marginTop: 0, color: 'black' }}>
+                            임시저장 완료
+                        </h3>
+                        <p style={{ color: '#666', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                            현재 설정이 이 브라우저에 저장되었습니다.<br />
+                            브라우저를 닫았다가 다시 열어도 유지됩니다.<br />
+                            <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>(다른 기기에서는 불러올 수 없습니다)</span>
+                        </p>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => setShowTempSaveModal(false)}
+                            style={{ minWidth: '120px', display: 'block', margin: '0 auto' }}
+                        >
+                            확인
+                        </button>
+                    </div>
+                </div>
+            )}
+            {/* 로딩 오버레이 */}
+            {loading && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 9999,
+                    backdropFilter: 'blur(5px)'
+                }}>
+                    <div className="spinner" style={{
+                        width: '50px',
+                        height: '50px',
+                        border: '5px solid #f3f3f3',
+                        borderTop: '5px solid var(--primary)',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                        marginBottom: '1rem'
+                    }} />
+                    <h3 style={{ color: 'var(--primary)', margin: 0 }}>작업을 처리 중입니다...</h3>
+                    <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0 0 0' }}>잠시만 기다려주세요.</p>
+                    <style jsx>{`
+                        @keyframes spin {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                        }
+                    `}</style>
                 </div>
             )}
         </div>
