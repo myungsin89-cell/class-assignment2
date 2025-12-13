@@ -382,28 +382,22 @@ export default function ClassSectionsPage() {
                                     ×
                                 </button>
 
-                                <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <div>
-                                        <div style={{
-                                            marginBottom: '0.5rem',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem'
+                                <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem'
+                                    }}>
+                                        <span style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            width: '32px', height: '32px', borderRadius: '8px',
+                                            background: isCompleted ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.2)',
+                                            color: isCompleted ? '#34d399' : '#818cf8',
+                                            fontWeight: 'bold'
                                         }}>
-                                            <span style={{
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                width: '32px', height: '32px', borderRadius: '8px',
-                                                background: isCompleted ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.2)',
-                                                color: isCompleted ? '#34d399' : '#818cf8',
-                                                fontWeight: 'bold'
-                                            }}>
-                                                {section}
-                                            </span>
-                                            <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{section}반</span>
-                                        </div>
-                                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                            {classData.grade}학년
-                                        </p>
+                                            {section}
+                                        </span>
+                                        <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{section}반</span>
                                     </div>
 
                                     {isCompleted ? (

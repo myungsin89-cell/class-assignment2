@@ -174,24 +174,24 @@ export default function Dashboard() {
 
       {/* 반배정 시작하기 CTA 영역 */}
       <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
         borderRadius: '12px',
         padding: '1.5rem 2rem',
         marginBottom: '2.5rem',
         textAlign: 'center',
         color: 'white',
-        boxShadow: '0 4px 16px rgba(102, 126, 234, 0.25)',
+        boxShadow: '0 4px 16px rgba(16, 185, 129, 0.25)',
         cursor: 'pointer',
         transition: 'all 0.3s ease'
       }}
         onClick={() => setShowModal(true)}
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow = '0 8px 20px rgba(102, 126, 234, 0.35)';
+          e.currentTarget.style.boxShadow = '0 8px 20px rgba(16, 185, 129, 0.35)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 4px 16px rgba(102, 126, 234, 0.25)';
+          e.currentTarget.style.boxShadow = '0 4px 16px rgba(16, 185, 129, 0.25)';
         }}
       >
         <h2 style={{ fontSize: '1.4rem', marginBottom: '0.3rem', fontWeight: 'bold', marginTop: 0 }}>
@@ -330,7 +330,7 @@ export default function Dashboard() {
                   새로운반
                 </div>
               )}
-              <h2 style={{ fontSize: '2rem', marginBottom: '0.5rem', color: '#007bff' }}>
+              <h2 style={{ fontSize: '2rem', marginBottom: '0.5rem', color: '#10b981' }}>
                 {classData.grade}학년
               </h2>
               <p style={{ fontSize: '1.1rem', color: '#666', marginBottom: '1rem' }}>
@@ -377,7 +377,7 @@ export default function Dashboard() {
             style={{ maxWidth: '500px', width: '90%', margin: '1rem' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ marginBottom: '1.5rem' }}>새 학급 만들기</h2>
+            <h2 style={{ marginBottom: '1.5rem', textAlign: 'center', color: '#10b981' }}>반배정 시작하기</h2>
 
             <form onSubmit={handleCreateClass}>
               <div className="form-group">
@@ -414,7 +414,14 @@ export default function Dashboard() {
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  style={{ flex: 1 }}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    background: '#10b981',
+                    borderColor: '#10b981'
+                  }}
                   disabled={creating}
                 >
                   {creating ? (
@@ -435,7 +442,10 @@ export default function Dashboard() {
                     flex: 1,
                     background: '#fff',
                     color: '#666',
-                    border: '1px solid #ddd'
+                    border: '1px solid #ddd',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
                   }}
                 >
                   취소
