@@ -953,7 +953,7 @@ export default function StudentsPage() {
                                 <th style={{ width: '80px', textAlign: 'center', whiteSpace: 'nowrap' }}>생년월일</th>
                                 <th style={{ width: '180px', textAlign: 'center', whiteSpace: 'nowrap' }}>특이사항</th>
                                 <th style={{ width: '130px', textAlign: 'center', whiteSpace: 'nowrap' }}>연락처</th>
-                                <th style={{ width: '50px', textAlign: 'center', borderLeft: '2px solid var(--border)', whiteSpace: 'nowrap' }}>석차</th>
+                                <th style={{ width: '70px', textAlign: 'center', borderLeft: '2px solid var(--border)', whiteSpace: 'nowrap' }}>석차</th>
                                 <th style={{ width: '50px', textAlign: 'center', whiteSpace: 'nowrap' }}>문제행동</th>
                                 <th style={{ width: '50px', textAlign: 'center', whiteSpace: 'nowrap' }}>특수교육</th>
                                 <th style={{ width: '50px', textAlign: 'center', whiteSpace: 'nowrap' }}>학습부진</th>
